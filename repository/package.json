@@ -1,0 +1,16 @@
+{
+  "name": "sandscreener-backend",
+  "scripts": {
+    "start": "npx hardhat node"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^2.0.0",
+    "hardhat": "^2.12.6",
+    "solidity-coverage": "^0.8.2"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^4.8.0",
+    "bs58": "^5.0.0",
+    "dotenv": "^16.0.3"
+  }
+}

@@ -1,0 +1,7 @@
+# Typical gitignore for a Next project:
+.next
+
+# To prevent comitting the large zKey.
+# ZKP-related files should be obtained by compiling the circuit in the circuit folder
+# TODO figure out another way of deployment to upload the large zKey directly
+# public/zk

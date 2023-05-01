@@ -1,0 +1,57 @@
+{
+  "host": "localhost",
+  "port": 3030,
+  "public": "../public/",
+  "paginate": {
+    "default": 10,
+    "max": 50
+  },
+  "auditorPrivateKey": "ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
+  "ipfsGateway": "https://cloudflare-ipfs.com/ipfs/",
+  "createdAt01": {
+    "1": 9116966,
+    "5": 3782581
+  },
+  "createdAt1": {
+    "1": 9117609,
+    "5": 3782590
+  },
+  "createdAt10": {
+    "1": 9117720,
+    "5": 3782593
+  },
+  "createdAt100": {
+    "1": 9161894,
+    "5": 3782596
+  },
+  "sanctionedAt": 15319495,
+  "authentication": {
+    "entity": "user",
+    "service": "users",
+    "secret": "yoursecrethere",
+    "authStrategies": ["jwt", "local"],
+    "jwtOptions": {
+      "header": {
+        "typ": "access"
+      },
+      "audience": "https://yourdomain.com",
+      "issuer": "feathers",
+      "algorithm": "HS256",
+      "expiresIn": "1d"
+    },
+    "local": {
+      "usernameField": "email",
+      "passwordField": "password"
+    },
+    "oauth": {
+      "redirect": "/",
+      "auth0": {
+        "key": "yourkeyhere",
+        "secret": "yoursecrethere",
+        "subdomain": "yoursubdomainhere",
+        "scope": ["profile", "openid", "email"]
+      }
+    }
+  },
+  "postgres": "postgres://postgres:postgres@localhost:5432/backend"
+}

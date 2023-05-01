@@ -1,0 +1,92 @@
+{
+  "name": "backend",
+  "description": "Sandscreener Auditor Backend",
+  "version": "0.0.0",
+  "homepage": "",
+  "private": true,
+  "main": "src",
+  "keywords": [
+    "feathers"
+  ],
+  "contributors": [],
+  "bugs": {},
+  "directories": {
+    "lib": "src",
+    "test": "test/",
+    "config": "config/"
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">= 3.0.0"
+  },
+  "scripts": {
+    "test": "npm run lint && npm run compile && npm run coverage",
+    "lint": "eslint src/. test/. --config .eslintrc.json --ext .ts --fix",
+    "dev": "ts-node-dev --no-notify src/",
+    "start": "node lib/",
+    "start-dev": "export NODE_ENV=staging && npm run compile && node lib/",
+    "clean": "shx rm -rf test/data/",
+    "coverage": "nyc npm run mocha && nyc report --reporter=html",
+    "mocha": "npm run clean && NODE_ENV=test mocha --require ts-node/register --require source-map-support/register \"test/**/*.ts\" --recursive --exit",
+    "compile": "shx rm -rf lib/ && tsc",
+    "postinstall": "npm run tsc",
+    "tsc": "./node_modules/typescript/bin/tsc"
+  },
+  "standard": {
+    "env": [
+      "mocha"
+    ],
+    "ignore": []
+  },
+  "types": "lib/",
+  "dependencies": {
+    "@feathersjs/authentication": "^4.5.15",
+    "@feathersjs/authentication-local": "^4.5.15",
+    "@feathersjs/authentication-oauth": "^4.5.15",
+    "@feathersjs/configuration": "^4.5.15",
+    "@feathersjs/errors": "^4.5.15",
+    "@feathersjs/express": "^4.5.15",
+    "@feathersjs/feathers": "^4.5.15",
+    "@feathersjs/transport-commons": "^4.5.15",
+    "axios": "^1.2.1",
+    "bs58": "^5.0.0",
+    "circomlibjs": "^0.1.1",
+    "cli-progress": "^3.11.2",
+    "compression": "^1.7.4",
+    "cors": "^2.8.5",
+    "dotenv": "^16.0.3",
+    "ethers": "^5.7.2",
+    "feathers-hooks-common": "^6.1.5",
+    "feathers-memory": "^4.1.0",
+    "feathers-sequelize": "^6.3.4",
+    "ffjavascript": "^0.2.57",
+    "fixed-merkle-tree": "^0.7.3",
+    "helmet": "^5.1.1",
+    "limiter": "^2.1.0",
+    "memory-cache": "^0.2.0",
+    "pg": "^8.8.0",
+    "sequelize": "^6.23.1",
+    "serve-favicon": "^2.5.0",
+    "snarkjs": "^0.6.7",
+    "winston": "^3.8.2"
+  },
+  "devDependencies": {
+    "@istanbuljs/nyc-config-typescript": "^1.0.2",
+    "@types/bluebird": "^3.5.36",
+    "@types/cli-progress": "^3.11.0",
+    "@types/compression": "^1.7.2",
+    "@types/cors": "^2.8.12",
+    "@types/jsonwebtoken": "^8.5.9",
+    "@types/mocha": "^10.0.1",
+    "@types/serve-favicon": "^2.5.3",
+    "@types/validator": "^13.7.6",
+    "@typescript-eslint/eslint-plugin": "^5.38.0",
+    "@typescript-eslint/parser": "^5.38.0",
+    "eslint": "^8.23.1",
+    "mocha": "^10.2.0",
+    "nyc": "^15.1.0",
+    "shx": "^0.3.4",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^4.9.4"
+  }
+}

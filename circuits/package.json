@@ -1,0 +1,12 @@
+{
+  "name": "circuits",
+  "version": "1.0.0",
+  "scripts": {
+    "compile": ". scripts/compile-circuit.sh && node ./scripts/bump-version.js"
+  },
+  "license": "ISC",
+  "dependencies": {
+    "circomlib": "^2.0.5",
+    "snarkjs": "^0.6.4"
+  }
+}

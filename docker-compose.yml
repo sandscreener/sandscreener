@@ -1,0 +1,36 @@
+version: "3.9"
+services:
+  backend:
+    build: backend
+    depends_on:
+      - db
+    ports:
+      - "3000:3030"
+    environment:
+      - NODE_ENV=docker
+      - NODE_CONFIG={"auditorPrivateKey":"$AUDITOR_PRIVATE_KEY","rpcUrl":"$RPC_URL"}
+    #volumes:
+    # Maps our current project directory `.` to
+    # our working directory in the container
+    #  - ./:/usr/src/app/
+  db:
+    image: postgres:15.1-alpine
+    restart: always
+    environment:
+      # You can set the value of environment variables
+      # in your docker-compose.yml file
+      # Our Node app will use these to connect
+      # to the database
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=backend
+    ports:
+      # Remaps the port that the database is running on to avoid conflicts with locally running databases
+      - "2345:5432"
+    #volumes:
+      # When the PostgreSQL container is started it will run any scripts
+      # provided in the `docker-entrypoint-initdb.d` directory, this connects
+      # our seed file to that directory so that it gets run
+      # TODO seed with users who have access
+      # - ./database-seed.sql:/docker-entrypoint-initdb.d/database-seed.sql
+

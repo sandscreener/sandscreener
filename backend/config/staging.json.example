@@ -1,0 +1,7 @@
+{
+  "rpcUrl": {
+    "1": "https://your-mainnet-rpc-url",
+    "5": "https://your-goerli-rpc-url",
+    "31337": "http://127.0.0.1:8545"
+  }
+}
