@@ -35,7 +35,10 @@ export type ABIs = {
 
 function Page() {
   const PRODUCTION = process.env.NODE_ENV === "production";
-  console.log("process.env.NODE_ENV", process.env.NODE_ENV);
+  console.log(
+    "process.env.NEXT_PUBLIC_BACKEND_ADDRESS",
+    process.env.NEXT_PUBLIC_BACKEND_ADDRESS
+  );
 
   const [feathersClient, setFeathersClient] = useState<any>();
   const { address, isConnected, connector } = useAccount();
