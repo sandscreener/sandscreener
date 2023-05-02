@@ -35,10 +35,6 @@ export type ABIs = {
 
 function Page() {
   const PRODUCTION = process.env.NODE_ENV === "production";
-  console.log(
-    "process.env.NEXT_PUBLIC_BACKEND_ADDRESS",
-    process.env.NEXT_PUBLIC_BACKEND_ADDRESS
-  );
 
   const [feathersClient, setFeathersClient] = useState<any>();
   const { address, isConnected, connector } = useAccount();
@@ -216,7 +212,6 @@ function Page() {
 
   useEffect(() => {
     if (!commitmentHex || isCommitmentValid || !poolAddress) return;
-    console.log("poolAddress", poolAddress);
     const tornadoPoolContract: ethers.Contract = new ethers.Contract(
       poolAddress,
       tornadoPoolABI,
@@ -237,7 +232,6 @@ function Page() {
         console.log(`Commitment found in ${poolName} pool`);
       }
     };
-    console.log("tornadoPoolContract.address", tornadoPoolContract.address);
     fetchEvents();
   }, [poolAddress, commitmentHex, provider, chainId]);
 
