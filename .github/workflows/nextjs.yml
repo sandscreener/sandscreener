@@ -23,6 +23,11 @@ permissions:
 concurrency:
   group: "pages"
   cancel-in-progress: false
+  
+env:
+  NEXT_PUBLIC_BACKEND_ADDRESS: ${{ secrets.NEXT_PUBLIC_BACKEND_ADDRESS }}
+  NEXT_PUBLIC_ALCHEMY_API_KEY: ${{ secrets.NEXT_PUBLIC_ALCHEMY_API_KEY }}
+  NEXT_PUBLIC_INFURA_API_KEY: ${{ secrets.NEXT_PUBLIC_INFURA_API_KEY }}
 
 jobs:
   # Build job
