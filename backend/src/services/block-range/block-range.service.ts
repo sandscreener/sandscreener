@@ -1,14 +1,14 @@
-// Initializes the `commitments` service on path `/commitments`
+// Initializes the `block-range` service on path `/block-range`
 import { ServiceAddons } from '@feathersjs/feathers';
 import { Application } from '../../declarations';
-import { Commitments } from './commitments.class';
-import createModel from '../../models/commitments.model';
-import hooks from './commitments.hooks';
+import { BlockRange } from './block-range.class';
+import createModel from '../../models/block-range.model';
+import hooks from './block-range.hooks';
 
 // Add this service to the service type index
 declare module '../../declarations' {
   interface ServiceTypes {
-    commitments: Commitments & ServiceAddons<any>;
+    'block-range': BlockRange & ServiceAddons<any>;
   }
 }
 
@@ -21,10 +21,10 @@ export default function (app: Application): void {
   };
 
   // Initialize our service with any options it requires
-  app.use('/commitments', new Commitments(options));
+  app.use('/block-range', new BlockRange(options, app));
 
   // Get our initialized service so that we can register hooks
-  const service = app.service('commitments');
+  const service = app.service('block-range');
 
   service.hooks(hooks);
 }

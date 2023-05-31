@@ -1,3 +1,6 @@
 {
-  "postgres": "postgres://postgres:postgres@localhost:5432/test"
+  "postgres": "postgres://postgres:postgres@localhost:5432/test",
+  "rpcUrl": {
+    "31337": "http://127.0.0.1:8545"
+  }
 }

@@ -60,11 +60,15 @@ app.use(express.errorHandler({ logger } as any));
 app.set('cacheManager', new Cache());
 app.hooks(appHooks);
 
-app.service('pool-indexer').find({
-  query: {
-    poolName: '01ETH',
-    chainId: '5',
-  },
+['01ETH', '1ETH', '10ETH', '100ETH'].forEach((poolName) => {
+  ['1', '5'].forEach((chainId) => {
+    app.service('pool-indexer').find({
+      query: {
+        poolName: poolName,
+        chainId: chainId,
+      },
+    });
+  });
 });
 
 export default app;

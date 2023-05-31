@@ -77,6 +77,7 @@ export class Blocklist extends Service<BlocklistModel> {
 
         return params;
       } else {
+        console.log(`Blocklist with CID ${blocklistCID} not found in the DB`);
         const ipfsResponse = await this.app.service('ipfs-client').find(internalParams);
         // Parse the file contents
         const parsedJSON = JSON.parse(ipfsResponse.result.rawBlocklist);

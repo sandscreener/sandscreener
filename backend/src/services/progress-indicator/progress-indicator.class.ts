@@ -33,7 +33,7 @@ export class ProgressIndicator extends Service {
         tx: 0,
       },
       {
-        format: `Scanning ${data.poolName}\t on ${data.chainId}: {bar} {percentage}%\t| {block}/{totalBlocks}\tblocks, {tx}\tdeposits found`,
+        format: `Scanning ${data.poolName}\t on ${data.chainId}: {bar} {percentage}%\t| \t{block}\t/{totalBlocks} blocks, {tx}\tdeposits found`,
         etaBuffer: 10000,
       }
     );
@@ -52,7 +52,7 @@ export class ProgressIndicator extends Service {
     this.bars.get(id).setTotal(this.bars.get(id).getTotal() + data.eventsDelta);
     this.bars.get(id).increment(1, { tx: data.tx });
     if (data.eventsDelta > 0) {
-      this.bars.get(id).increment(0, {
+      this.bars.get(id).increment({
         block: data.blockNumber - data.createdAt,
       });
     }

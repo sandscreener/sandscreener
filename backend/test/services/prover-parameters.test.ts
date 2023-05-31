@@ -65,7 +65,11 @@ describe('\'prover parameters\' service', () => {
   it('returns the prover parameters for the given pool', async () => {
     const service = app.service('prover-parameters');
     const result = await service.find({
-      query: { poolName: '1ETH', address: '0xBcd4042DE499D14e55001CcbB24a551F3b954096', chainId: '31337' },
+      query: {
+        poolName: '1ETH',
+        address: '0xBcd4042DE499D14e55001CcbB24a551F3b954096',
+        chainId: '31337',
+      },
     });
 
     assert.equal(result.blocklistCID, 'Qmf5fFadtidqhR6gsP2F46Hpow6h7oxEZsJdqcKLihciXN');
@@ -112,7 +116,7 @@ describe('\'prover parameters\' service', () => {
         query: { poolName: '1ETH', address: '0xBcd4042DE499D14e55001CcbB24a551F3b954096' },
       });
     } catch (err) {
-      assert.equal(err.message, 'chainId is required');
+      assert.equal(err.message, 'Chain ID is required');
     }
   });
 });

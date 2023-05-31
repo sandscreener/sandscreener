@@ -19,6 +19,8 @@ import merkleTree from './merkle-tree/merkle-tree.service';
 
 import submitProof from './submit-proof/submit-proof.service';
 
+import blockRange from './block-range/block-range.service';
+
 export default function (app: Application): void {
   app.configure(users);
   app.configure(blocklist);
@@ -33,4 +35,5 @@ export default function (app: Application): void {
   app.configure(progressIndicator);
   app.configure(merkleTree);
   app.configure(submitProof);
+  app.configure(blockRange);
 }
