@@ -11,10 +11,12 @@ export default function (app: Application): typeof Model {
     'commitments',
     {
       //The following properties are coming from the event
+      //Commitment is not unique, collisions are possible. E.g., see
+      //https://goerli.etherscan.io/tx/0x3323f88cb83370c437cf287e1f5ba275d1f33c477050ddaddd7e14c2ee58eeca#eventlog
+      // and leaf 23 here: https://etherscan.io/tx/0x0246beddfc8841c52dde875d6487c41c7c28b2a6ae566f083203a22a0bd7cd8b#eventlog
       commitment: {
         type: DataTypes.STRING,
         allowNull: false,
-        unique: true,
       },
       leafIndex: {
         type: DataTypes.INTEGER,

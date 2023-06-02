@@ -52,8 +52,6 @@ export class PoolIndexer extends Service {
       Math.min(this.app.get('sanctionedAt'), await tornadoContract.provider.getBlockNumber())
     );
 
-    console.log('createdAt: ' + this.createdAt.get(poolName + chainId));
-    console.log('sanctionedAt: ' + this.sanctionedAt.get(poolName + chainId));
     await this.prepareBlockRanges(poolName, chainId, this.createdAt.get(poolName + chainId));
 
     await this.startProgress(poolName, chainId);
