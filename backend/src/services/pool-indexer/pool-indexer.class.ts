@@ -93,6 +93,15 @@ export class PoolIndexer extends Service {
           endBlock,
           status: 'pending',
         });
+      } else {
+        if (
+          existingBlockRange.data[0].status === 'failed' ||
+          existingBlockRange.data[0].status === 'in-progress'
+        ) {
+          await this.app.service('block-range').patch(existingBlockRange.data[0].id, {
+            status: 'pending',
+          });
+        }
       }
 
       startBlock = endBlock + 1;
@@ -288,10 +297,8 @@ export class PoolIndexer extends Service {
         status: 'failed',
       },
     })) as Paginated<any>;
-    console.log('Incomplete commitments', incompleteCommitments);
     const commitments = [...incompleteCommitments.data];
     while (commitments.length > 0) {
-      console.log('Retrying incomplete commitments...');
       const limiterParams = { ...internalParams, computeUnits: 20 };
       const tokensRemoved = await this.app.service('rate-limiter').find(limiterParams);
       if (!tokensRemoved) {
