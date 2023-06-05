@@ -131,7 +131,7 @@ function Page() {
       return;
     }
     try {
-      const parsedNote = parseNote(note);
+      const parsedNote = await parseNote(note);
       if (parsedNote.currency !== "eth") {
         alert("Only ETH notes are supported");
         return;
