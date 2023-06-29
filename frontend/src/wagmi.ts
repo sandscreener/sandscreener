@@ -31,7 +31,8 @@ export const client = createClient({
     new WalletConnectConnector({
       chains,
       options: {
-        qrcode: true,
+        projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID!,
+        showQrModal: true,
       },
     }),
     new InjectedConnector({

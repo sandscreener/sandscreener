@@ -10,9 +10,11 @@ import contractDeployments from "../contracts/deployments.json";
 import contractAbis from "../contracts/contractAbi.json";
 import { ethers } from "ethers";
 import getCIDFromMultihash from "../hooks/getCIDFromMultihash";
+import CHAIN_GRAPH_URLS from "../config/subgraph";
+import { Button } from "react-bootstrap";
 
 const Editor = (props: {
-  chainId: "1" | "5" | "31337";
+  chainId: keyof typeof CHAIN_GRAPH_URLS;
   editorRoleHashData: any;
 }) => {
   const { address, isConnected } = useAccount();
@@ -23,22 +25,26 @@ const Editor = (props: {
   const [isPrepareListWriteError, setIsPrepareListWriteError] = useState(false);
   const [prepareListWriteError, setPrepareListWriteError] = useState<Error>();
   const [latestBlocklistHash, setLatestBlocklistHash] = useState("");
+  const contractDeployment: { address: string } | undefined = (
+    contractDeployments as any
+  )[props.chainId];
   //TODO parse safely, may not be deployed on a specific chain yet
-  const blocklistRegistryAddress = (contractDeployments as any)[props.chainId]
-    .address;
+  const blocklistRegistryAddress = contractDeployment?.address ?? undefined;
+  const contractJson: string | undefined = (contractAbis as any)[props.chainId];
   //TODO parse safely, may not be deployed on a specific chain yet
-  const contractAbi = JSON.parse((contractAbis as any)[props.chainId]);
+  const contractAbi = JSON.parse(contractJson ?? "{}");
 
   const {
     data: isEditor,
     isError: isEditorError,
     isLoading: isEditorLoading,
   } = useContractRead({
-    address: `0x${blocklistRegistryAddress.slice(2)}`,
+    address: `0x${blocklistRegistryAddress?.slice(2)}`,
     abi: contractAbi,
     functionName: "hasRole",
     args: [props.editorRoleHashData, address],
-    enabled: !!isConnected && !!props.editorRoleHashData,
+    enabled:
+      !!blocklistRegistryAddress && !!isConnected && !!props.editorRoleHashData,
     onSuccess(data) {
       console.log("Connected user is", data ? "Editor" : "not Editor");
     },
@@ -48,11 +54,16 @@ const Editor = (props: {
   });
 
   const { config: addListHashConfig } = usePrepareContractWrite({
-    address: `0x${blocklistRegistryAddress.slice(2)}`,
+    address: `0x${blocklistRegistryAddress?.slice(2)}`,
     abi: contractAbi,
     functionName: "addListHash",
     args: [digest, hashFunction, size],
-    enabled: !!digest && !!hashFunction && !!size && !!isEditor,
+    enabled:
+      !!blocklistRegistryAddress &&
+      !!digest &&
+      !!hashFunction &&
+      !!size &&
+      !!isEditor,
     onSuccess() {
       setIsPrepareListWriteError(false);
       setPrepareListWriteError(undefined);
@@ -79,11 +90,11 @@ const Editor = (props: {
     isError: isLatestListHashError,
     isLoading: isLatestListHashLoading,
   } = useContractRead({
-    address: `0x${blocklistRegistryAddress.slice(2)}`,
+    address: `0x${blocklistRegistryAddress?.slice(2)}`,
     abi: contractAbi,
     args: [address],
     functionName: "getLatestHash",
-    enabled: !!isEditor && !!address,
+    enabled: !!blocklistRegistryAddress && !!isEditor && !!address,
 
     onError(err) {
       console.log("address:", address);
@@ -141,13 +152,14 @@ const Editor = (props: {
             />
             <br />
 
-            <button
+            <Button
               style={{ padding: 5, margin: 5 }}
               type="button"
+              disabled={!cid}
               onClick={convertCid}
             >
               Convert CID to Multihash
-            </button>
+            </Button>
             <br />
             <label htmlFor="digest">Digest:</label>
             <input
@@ -183,8 +195,8 @@ const Editor = (props: {
               </div>
             )}
             <br />
-            <button
-              style={{ padding: 5 }}
+            <Button
+              style={{ padding: 5, margin: 5 }}
               type="button"
               disabled={!writeListHash || isAddListHashLoading}
               onClick={() => writeListHash?.()}
@@ -192,7 +204,7 @@ const Editor = (props: {
               {isAddListHashLoading
                 ? "Submitting the Blocklist..."
                 : "Submit Blocklist"}
-            </button>
+            </Button>
             {isAddListHashLoading && <progress value={undefined} />}
             {isAddListHashSuccess && (
               <div>
@@ -200,7 +212,7 @@ const Editor = (props: {
                 <div>
                   <a
                     href={`https://${
-                      props.chainId === "5" ? "goerli." : ""
+                      props.chainId === 5 ? "goerli." : ""
                     }etherscan.io/tx/${addListHashData?.hash}`}
                   >
                     Etherscan

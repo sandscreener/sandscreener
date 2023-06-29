@@ -53,6 +53,7 @@ export class SubmitProof extends Service {
     if (!valid) {
       throw new Error('The proof is not valid');
     }
+    //TODO check nullifier
     //TODO store in DB?
     return {
       valid: valid,
