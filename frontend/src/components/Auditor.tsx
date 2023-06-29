@@ -9,14 +9,18 @@ import {
 import contractDeployments from "../contracts/deployments.json";
 import contractAbis from "../contracts/contractAbi.json";
 import { isAddressValid } from "../utils/address_validation";
+import CHAIN_GRAPH_URLS from "../config/subgraph";
+import { Button } from "react-bootstrap";
 
 const Auditor = (props: {
-  chainId: "1" | "31337" | "5";
+  chainId: keyof typeof CHAIN_GRAPH_URLS;
   editorRoleHashData: any;
 }) => {
+  const contractDeployment: { address: string } | undefined = (
+    contractDeployments as any
+  )[props.chainId ?? "5"];
   //TODO parse safely, may not be deployed on a specific chain yet
-  const repositoryAddress = (contractDeployments as any)[props.chainId ?? "5"]
-    .address;
+  const repositoryAddress = contractDeployment?.address;
   const [editorAddress, _setEditorAddress] = useState("");
   const [isEditorAddressValid, setIsEditorAddressValid] = useState(false);
   const setEditorAddress = (address: string) => {
@@ -30,8 +34,11 @@ const Auditor = (props: {
   const [prepareEditorWriteError, setPrepareEditorWriteError] =
     useState<Error>();
 
+  const contractJson: string | undefined = (contractAbis as any)[
+    props.chainId ?? "5"
+  ];
   //TODO parse safely, may not be deployed on a specific chain yet
-  const contractAbi = JSON.parse((contractAbis as any)[props.chainId ?? "5"]);
+  const contractAbi = JSON.parse(contractJson ?? "{}");
   const { address, isConnected } = useAccount();
 
   //Read Admin role hash
@@ -40,10 +47,10 @@ const Auditor = (props: {
     isError: adminRoleHashError,
     isLoading: adminRoleHashLoading,
   } = useContractRead({
-    address: `0x${repositoryAddress.slice(2)}`,
+    address: `0x${repositoryAddress?.slice(2)}`,
     abi: contractAbi,
     functionName: "DEFAULT_ADMIN_ROLE",
-    enabled: !!isConnected,
+    enabled: !!repositoryAddress && !!isConnected,
     onSuccess(data) {
       console.log("adminRoleHash", adminRoleHashData);
     },
@@ -54,11 +61,11 @@ const Auditor = (props: {
     isError: isAdminError,
     isLoading: isAdminLoading,
   } = useContractRead({
-    address: `0x${repositoryAddress.slice(2)}`,
+    address: `0x${repositoryAddress?.slice(2)}`,
     abi: contractAbi,
     functionName: "hasRole",
     args: [adminRoleHashData, address],
-    enabled: !!isConnected && !!adminRoleHashData,
+    enabled: !!repositoryAddress && !!isConnected && !!adminRoleHashData,
     onSuccess(data) {
       console.log("Connected user is", data ? "Admin" : "not Admin");
       setIsPrepareEditorWriteError(false);
@@ -71,11 +78,15 @@ const Auditor = (props: {
   });
 
   const { config: grantEditorConfig } = usePrepareContractWrite({
-    address: `0x${repositoryAddress.slice(2)}`,
+    address: `0x${repositoryAddress?.slice(2)}`,
     abi: contractAbi,
     functionName: "grantRole",
     args: [props.editorRoleHashData, editorAddress],
-    enabled: !!editorAddress && !!isAdmin && isEditorAddressValid,
+    enabled:
+      !!repositoryAddress &&
+      !!editorAddress &&
+      !!isAdmin &&
+      isEditorAddressValid,
     onSuccess() {
       setIsPrepareEditorWriteError(false);
       setPrepareEditorWriteError(undefined);
@@ -98,11 +109,15 @@ const Auditor = (props: {
     });
 
   const { config: revokeEditorConfig } = usePrepareContractWrite({
-    address: `0x${repositoryAddress.slice(2)}`,
+    address: `0x${repositoryAddress?.slice(2)}`,
     abi: contractAbi,
     functionName: "revokeRole",
     args: [props.editorRoleHashData, editorAddress],
-    enabled: !!editorAddress && !!isAdmin && isEditorAddressValid,
+    enabled:
+      !!repositoryAddress &&
+      !!editorAddress &&
+      !!isAdmin &&
+      isEditorAddressValid,
     onSuccess() {
       setIsPrepareEditorWriteError(false);
       setPrepareEditorWriteError(undefined);
@@ -139,7 +154,7 @@ const Auditor = (props: {
               onChange={(e) => setEditorAddress(e.target.value)}
             />
             <br />
-            <button
+            <Button
               style={{ padding: 5, margin: 5 }}
               type="button"
               disabled={
@@ -152,7 +167,7 @@ const Auditor = (props: {
               {isGrantEditorLoading
                 ? "Granting Editor Role..."
                 : "Grant Editor Role"}
-            </button>
+            </Button>
             {isGrantEditorLoading && <progress value={undefined} />}
             {isGrantEditorSuccess && (
               <div>
@@ -160,7 +175,7 @@ const Auditor = (props: {
                 <div>
                   <a
                     href={`https://${
-                      props.chainId === "5" ? "goerli." : ""
+                      props.chainId === 5 ? "goerli." : ""
                     }etherscan.io/tx/${grantEditorData?.hash}`}
                   >
                     Etherscan
@@ -168,7 +183,7 @@ const Auditor = (props: {
                 </div>
               </div>
             )}
-            <button
+            <Button
               style={{ padding: 5, margin: 5 }}
               type="button"
               disabled={
@@ -181,7 +196,7 @@ const Auditor = (props: {
               {isRevokeEditorLoading
                 ? "Revoking Editor Role..."
                 : "Revoke Editor Role"}
-            </button>
+            </Button>
             {isRevokeEditorLoading && <progress value={undefined} />}
             {isRevokeEditorSuccess && (
               <div>
@@ -189,7 +204,7 @@ const Auditor = (props: {
                 <div>
                   <a
                     href={`https://${
-                      props.chainId === "5" ? "goerli." : ""
+                      props.chainId === 5 ? "goerli." : ""
                     }etherscan.io/tx/${revokeEditorData?.hash}`}
                   >
                     Etherscan

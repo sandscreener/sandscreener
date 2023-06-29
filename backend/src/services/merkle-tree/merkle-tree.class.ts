@@ -10,6 +10,7 @@ import { Presets, SingleBar } from 'cli-progress';
 export class MerkleTree extends Service {
   app: Application;
   initialized = false;
+  //TODO by pool
   tree: mt;
   progress: SingleBar;
   constructor(options: Partial<SequelizeServiceOptions>, app: Application) {

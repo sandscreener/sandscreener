@@ -79,6 +79,8 @@ export class ExclusionTree extends Service {
         depositor: {
           $in: params?.query?.blocklist,
         },
+        poolName: poolName,
+        chainId: chainId,
         $sort: {
           //1 is ascending, -1 is descending
           commitment: 1,
