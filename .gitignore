@@ -89,3 +89,4 @@ $RECYCLE.BIN/
 ###
 .env
 blocklist.json
+.DS_Store
