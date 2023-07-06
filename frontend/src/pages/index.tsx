@@ -22,6 +22,7 @@ import getApolloClient from "../hooks/getApolloClient";
 import Button from "react-bootstrap/Button";
 import { Form } from "react-bootstrap";
 import getFeathersClient from "../hooks/getFeathersClient";
+import getTornadoPoolContract from "../hooks/getTornadoPool";
 const groth16 = require("snarkjs").groth16;
 
 const CIRCUIT_WASM_PATH = "./zk/withdraw.wasm";
@@ -61,6 +62,14 @@ function Page() {
     "password"
   );
   const [poolAddress, setPoolAddress] = useState<string>();
+  const provider = useProvider({
+    chainId: chainId,
+  });
+  const tornadoPoolContract = getTornadoPoolContract(
+    poolAddress,
+    tornadoPoolABI,
+    provider
+  );
   const [poolName, setPoolName] = useState("");
   const [commitmentHex, setCommitmentHex] = useState("");
   const [nullifierHash, setNullifierHash] = useState("");
@@ -68,10 +77,6 @@ function Page() {
   const [secret, setSecret] = useState("");
   const [isCommitmentValid, setCommitmentValid] = useState(false);
   const [contractAbi, setContractAbi] = useState(JSON.parse(contractAbis[5]));
-
-  const provider = useProvider({
-    chainId: chainId,
-  });
 
   const appoloClient = getApolloClient(chainId).appoloClient;
 
@@ -228,12 +233,8 @@ function Page() {
   };
 
   useEffect(() => {
-    if (!commitmentHex || isCommitmentValid || !poolAddress) return;
-    const tornadoPoolContract: ethers.Contract = new ethers.Contract(
-      poolAddress,
-      tornadoPoolABI,
-      provider
-    );
+    if (!commitmentHex || isCommitmentValid || !tornadoPoolContract) return;
+
     const filter = tornadoPoolContract.filters.Deposit(commitmentHex);
     const fetchEvents = async () => {
       const events = await tornadoPoolContract.queryFilter(filter);
@@ -250,7 +251,7 @@ function Page() {
       }
     };
     fetchEvents();
-  }, [poolAddress, commitmentHex, provider, chainId]);
+  }, [commitmentHex, tornadoPoolContract, isCommitmentValid]);
 
   const {
     data: blocklistData,
@@ -260,15 +261,15 @@ function Page() {
 
   const poolDepositsQuery = gql`
     query Deposits(
-      $limit: Int
-      $offset: Int
+      $first: Int
+      $index_gt: Int
       $amount: String
       $currency: String
     ) {
       deposits(
         orderBy: index
-        first: $limit
-        where: { amount: $amount, currency: $currency, index_gt: $offset }
+        first: $first
+        where: { amount: $amount, currency: $currency, index_gt: $index_gt }
       ) {
         from
         commitment
@@ -334,8 +335,8 @@ function Page() {
           .query({
             query: poolDepositsQuery,
             variables: {
-              limit: pageSize,
-              offset: pageSize * i,
+              first: pageSize,
+              index_gt: pageSize * i - 1,
               currency: currency,
               amount: amount,
             },
@@ -349,7 +350,9 @@ function Page() {
               )
             );
             return console.log(
-              `Fetched ${pageSize * i + result.data.deposits.length} deposits`
+              `Fetched ${
+                pageSize * (i - 1) + result.data.deposits.length
+              } deposits`
             );
           })
           .catch((err) => {
@@ -440,7 +443,7 @@ function Page() {
 
     const { depositTree, exclusionTree } = await getTrees();
 
-    if (!depositTree || !exclusionTree) {
+    if (!depositTree || !exclusionTree || !tornadoPoolContract) {
       return;
     }
 
@@ -471,6 +474,21 @@ function Page() {
     const lesserPath = exclusionTree.path(lesserIndex);
 
     const fullTreePath = depositTree.path(depositTree.indexOf(commitmentHex));
+
+    const rootCheckPassed: boolean = await tornadoPoolContract.isKnownRoot(
+      ethers.utils.hexZeroPad(
+        ethers.utils.hexlify(BigInt(depositTree.root)),
+        32
+      )
+    );
+
+    if (!rootCheckPassed) {
+      alert(
+        "The Merkle root of the deposit tree is not known to the smart contract. Please try again."
+      );
+      setProofStatus("idle");
+      return;
+    }
 
     const args = {
       depositsRoot: depositTree.root,
