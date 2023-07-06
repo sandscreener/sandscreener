@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: ["*"]
 
+env:
+  GOERLI_PRIVATE_KEY: ${{ secrets.GOERLI_PRIVATE_KEY }}
+  GOERLI_URL: ${{ secrets.GOERLI_URL }}
+
 jobs:
   tests:
     runs-on: ubuntu-latest
