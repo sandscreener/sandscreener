@@ -3,7 +3,7 @@ import "solidity-coverage";
 import * as dotenv from "dotenv";
 dotenv.config();
 module.exports = {
-  defaultNetwork: "localhost",
+  defaultNetwork: "hardhat",
   networks: {
     localhost: {
       chainId: 31337,
