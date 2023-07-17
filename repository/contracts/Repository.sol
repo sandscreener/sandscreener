@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.16;
+pragma solidity ^0.8.18;
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "./ITornadoPoolInstance.sol";
 
 /**
  * @dev Struct to store metadata about an IPFS CID.
@@ -98,15 +99,9 @@ contract Repository is AccessControl {
      * @param _address The address of the Editor.
      * @return The latest Multihash for the given address.
      */
-    function getLatestHash(address _address)
-        public
-        view
-        returns (
-            bytes32,
-            uint8,
-            uint8
-        )
-    {
+    function getLatestHash(
+        address _address
+    ) public view returns (bytes32, uint8, uint8) {
         // Get the array of Multihash structs for the given address
         Multihash[] memory multihashes = getAllHashes(_address);
         require(
@@ -126,11 +121,9 @@ contract Repository is AccessControl {
      * @param _address The address of the Editor.
      * @return All Multihashes for the given address.
      */
-    function getAllHashes(address _address)
-        public
-        view
-        returns (Multihash[] memory)
-    {
+    function getAllHashes(
+        address _address
+    ) public view returns (Multihash[] memory) {
         require(hasRole(EDITOR_ROLE, _address), "The address is not an Editor");
         return listHashes[_address];
     }
@@ -177,11 +170,10 @@ contract Repository is AccessControl {
      * @param _signature The signature to be verified.
      * @return Whether the signature is valid.
      */
-    function signedByAdmin(bytes32 _payload, bytes memory _signature)
-        public
-        view
-        returns (bool)
-    {
+    function signedByAdmin(
+        bytes32 _payload,
+        bytes memory _signature
+    ) public view returns (bool) {
         return hasRole(DEFAULT_ADMIN_ROLE, _payload.recover(_signature));
     }
 
@@ -191,14 +183,20 @@ contract Repository is AccessControl {
      * @param b The second element of the proof.
      * @param c The third element of the proof.
      * @param input The input for the proof.
+     * @param tornadoPoolInstance The address of the Tornado pool for which the exclusion is being proven.
      * @return Whether the proof is valid.
      */
     function verifyProof(
         uint256[2] memory a,
         uint256[2][2] memory b,
         uint256[2] memory c,
-        uint256[3] memory input
+        uint256[3] memory input,
+        ITornadoPoolInstance tornadoPoolInstance
     ) public view returns (bool) {
+        require(
+            tornadoPoolInstance.isKnownRoot(bytes32(input[0])),
+            "The root is not found in the specified Tornado pool"
+        );
         return verifier.verifyProof(a, b, c, input);
     }
 }

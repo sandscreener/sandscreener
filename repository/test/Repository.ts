@@ -1,30 +1,58 @@
-import { BigNumber } from 'ethers';
-import { loadFixture } from '@nomicfoundation/hardhat-network-helpers';
-import { ethers } from 'hardhat';
-import bs58 from 'bs58';
-import { ProofStruct } from '../typechain-types/contracts/Repository.sol/Repository';
-const { expect } = require('chai');
+import { BigNumber } from "ethers";
+import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
+import { ethers } from "hardhat";
+import bs58 from "bs58";
+import { ProofStruct } from "../typechain-types/contracts/Repository.sol/Repository";
+const { expect } = require("chai");
 
-describe('Repository', function () {
+describe("Repository", function () {
   // An example list IPFS hash
-  const hash = 'Qmf5fFadtidqhR6gsP2F46Hppw6h7oxEZsJdqcKLihviXN';
+  const hash = "Qmf5fFadtidqhR6gsP2F46Hppw6h7oxEZsJdqcKLihviXN";
+  let proof: ProofStruct;
   async function deployRepositoryFixture() {
     // Contracts are deployed using the first signer/account by default
     const [owner, editor, user, unauthorized] = await ethers.getSigners();
 
-    const Verifier = await ethers.getContractFactory('Verifier');
-    const verifier = await Verifier.deploy();
-
+    const verifier = await ethers.deployContract("Verifier");
     await verifier.deployed();
     // Deploy the Repository contract
-    const Repository = await ethers.getContractFactory('Repository');
-    const repository = await Repository.deploy(verifier.address);
+    const repository = await ethers.deployContract("Repository", [
+      verifier.address,
+    ]);
     await repository.deployed();
 
     return { repository, owner, editor, user, unauthorized };
   }
 
-  it('should only allow the editor to add a hash', async function () {
+  beforeEach(() => {
+    proof = {
+      a: [
+        "8429860696870209631424410335923371474133778417543961868014142216750376449883",
+        "18002447978382135461456376065845241247275353432599864436523810051974064193051",
+      ],
+      b: [
+        [
+          "4414137458164890742897542228953023567041474349592040890345933370721007000568",
+          "6082776541095930848190178567203824052804497705548951852905591453694165950585",
+        ],
+        [
+          "20364442820791155099513413662185073894300626666060241136029381806629480923624",
+          "14739595751619722599286729595882941569109668246044349539647484051417975909871",
+        ],
+      ],
+      c: [
+        "12699708841618315542824208667079210105786035277201951397695990633700115095998",
+        "14427890429506596743390602420010231589795510337385413558022875140471981679727",
+      ],
+      input: [
+        "8247432752069855570268690103956196602748578499708155033818327397618176652095",
+        "20739760504633648115176694042601499420637557827097160981870180480661241713026",
+        "13496935901753226448709892995262485791905551549916148943385876327277619140416",
+      ],
+    };
+  });
+
+  it("should only allow the editor to add a hash", async function () {
     const { repository, editor, unauthorized } = await loadFixture(
       deployRepositoryFixture
     );
@@ -45,11 +73,11 @@ describe('Repository', function () {
     await expect(
       repository.connect(unauthorized).addListHash(digest, hashFunction, size)
     ).to.be.revertedWith(
-      'AccessControl: account 0x90f79bf6eb2c4f870365e785982e1f101e93b906 is missing role 0x21d1167972f621f75904fb065136bc8b53c7ba1c60ccd3a7758fbee465851e9c'
+      "AccessControl: account 0x90f79bf6eb2c4f870365e785982e1f101e93b906 is missing role 0x21d1167972f621f75904fb065136bc8b53c7ba1c60ccd3a7758fbee465851e9c"
     );
   });
 
-  it('should not be able to add a zero hash', async function () {
+  it("should not be able to add a zero hash", async function () {
     const { repository, owner, editor } = await loadFixture(
       deployRepositoryFixture
     );
@@ -64,10 +92,10 @@ describe('Repository', function () {
       repository
         .connect(editor)
         .addListHash(ethers.constants.HashZero, hashBytes[0], hashBytes[1])
-    ).to.be.revertedWith('Digest cannot be zero bytes32 value');
+    ).to.be.revertedWith("Digest cannot be zero bytes32 value");
   });
 
-  it('should add a new hash to the list of hashes', async function () {
+  it("should add a new hash to the list of hashes", async function () {
     const { repository, owner, editor } = await loadFixture(
       deployRepositoryFixture
     );
@@ -103,15 +131,15 @@ describe('Repository', function () {
     expect(encodedHash).to.equal(hash);
   });
 
-  it('should fail if the address is not an editor', async function () {
+  it("should fail if the address is not an editor", async function () {
     const { repository } = await loadFixture(deployRepositoryFixture);
 
     await expect(
       repository.getLatestHash(ethers.constants.AddressZero)
-    ).to.be.revertedWith('The address is not an Editor');
+    ).to.be.revertedWith("The address is not an Editor");
   });
 
-  it('should fail if no hash is added by the editor', async function () {
+  it("should fail if no hash is added by the editor", async function () {
     const { repository, owner, editor } = await loadFixture(
       deployRepositoryFixture
     );
@@ -119,58 +147,61 @@ describe('Repository', function () {
       .connect(owner)
       .grantRole(await repository.EDITOR_ROLE(), editor.address);
     await expect(repository.getLatestHash(editor.address)).to.be.revertedWith(
-      'No hashes have been stored yet for this Editor'
+      "No hashes have been stored yet for this Editor"
     );
   });
 
-  it('should only allow signed proofs to be added', async function () {
-    const { repository, owner, user, unauthorized } = await loadFixture(
-      deployRepositoryFixture
-    );
+  it("should verify the correct proof", async function () {
+    const { repository, user } = await loadFixture(deployRepositoryFixture);
 
-    // Define a proof as a Proof struct
-    const proof: ProofStruct = {
-      a: [BigNumber.from(1), BigNumber.from(2)],
-      b: [
-        [BigNumber.from(3), BigNumber.from(4)],
-        [BigNumber.from(5), BigNumber.from(6)],
-      ],
-      c: [BigNumber.from(7), BigNumber.from(8)],
-      input: [BigNumber.from(9), BigNumber.from(10), BigNumber.from(11)],
-    };
-    // Hash the proof to sign
-    const hashedTxData = ethers.utils.defaultAbiCoder.encode(
-      ['uint256[2]', 'uint256[2][2]', 'uint256[2]', 'uint256[3]'],
-      [proof.a, proof.b, proof.c, proof.input]
-    );
-    const message = ethers.utils.solidityKeccak256(['bytes'], [hashedTxData]);
-    // Sign the hash of the proof
-    const signature = await owner.signMessage(ethers.utils.arrayify(message));
-
-    // The first account should be able to add a proof
     await expect(
-      await repository.hasRole(
-        await repository.DEFAULT_ADMIN_ROLE(),
-        owner.address
-      )
+      await repository
+        .connect(user)
+        .verifyProof(
+          proof.a,
+          proof.b,
+          proof.c,
+          proof.input,
+          "0x6Bf694a291DF3FeC1f7e69701E3ab6c592435Ae7"
+        )
     ).to.be.true;
-    await repository.connect(user).addProof(proof, signature);
-    //Check that the user proof can be retrieved
-    const userProof = (await repository.getProofs(user.address))[0];
-    expect(userProof.a).to.eql(proof.a);
-    expect(userProof.b).to.eql(proof.b);
-    expect(userProof.c).to.eql(proof.c);
-    expect(userProof.input).to.eql(proof.input);
+  });
 
-    // The second account should not be able to add a proof
-    // because it is not signed by an admin
-    // Sign the hash of the proof using another account
-    const signature2 = await unauthorized.signMessage(
-      ethers.utils.arrayify(message)
-    );
-    // Expect the transaction to be reverted because the signature is not valid
+  it("should fail the verification if the Merkle tree root is not found in a specified Tornado pool", async function () {
+    const { repository, user } = await loadFixture(deployRepositoryFixture);
+
+    //Modify one last digit of the root
+    proof.input[0] =
+      "8247432752069855570268690103956196602748578499708155033818327397618176652094";
     await expect(
-      repository.connect(unauthorized).addProof(proof, signature2)
-    ).to.be.revertedWith('Signature mismatch');
+      repository
+        .connect(user)
+        .verifyProof(
+          proof.a,
+          proof.b,
+          proof.c,
+          proof.input,
+          "0x6Bf694a291DF3FeC1f7e69701E3ab6c592435Ae7"
+        )
+    ).to.be.revertedWith("The root is not found in the specified Tornado pool");
+  });
+
+  it("should fail the verification if the proof inputs are incorrect", async function () {
+    const { repository, user } = await loadFixture(deployRepositoryFixture);
+
+    //Modify one last digit of one of the inputs
+    proof.a[0] =
+      "8429860696870209631424410335923371474133778417543961868014142216750376449882";
+    await expect(
+      repository
+        .connect(user)
+        .verifyProof(
+          proof.a,
+          proof.b,
+          proof.c,
+          proof.input,
+          "0x6Bf694a291DF3FeC1f7e69701E3ab6c592435Ae7"
+        )
+    ).to.be.revertedWithoutReason();
   });
 });
