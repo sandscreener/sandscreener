@@ -54,17 +54,17 @@ contract Repository is AccessControl {
     bytes32 public constant EDITOR_ROLE = keccak256("EDITOR_ROLE");
     // The mapping of addresses to arrays of blocklist Multihashes
     mapping(address => Multihash[]) public blocklistHashes;
-    // The mapping of Editor addresses to their submitted blocklist hashes to the corresponding exclusion tree root hash
-    mapping(address => mapping(bytes32 => bytes32)) public exclusionTreeRoots;
-    //User proofs by Tornado pool address, blocklist hash, and root hash at the blocklist at the moment of proof submission
-    mapping(address => mapping(address => mapping(bytes32 => bytes32)))
+    // The mapping of Editor addresses to their submitted blocklist hashes to the corresponding exclusion tree root
+    mapping(address => mapping(bytes32 => uint256)) public exclusionTreeRoots;
+    //User proofs by Tornado pool address, blocklist hash, and exclusion tree root at the moment of proof submission
+    mapping(address => mapping(address => mapping(bytes32 => uint256)))
         public userProofs;
 
     IVerifier private immutable verifier;
     IInstanceStateChecker private immutable instanceStateChecker;
 
     event ExclusionRootStored(
-        bytes32 indexed exclusionRootHash,
+        uint256 indexed exclusionTreeRoot,
         address editorAddress,
         bytes32 blocklistHash
     );
@@ -73,7 +73,7 @@ contract Repository is AccessControl {
         address indexed userAddress,
         address poolAddress,
         bytes32 blocklistHash,
-        bytes32 rootHash
+        uint256 exclusionTreeRoot
     );
 
     /**
@@ -90,13 +90,13 @@ contract Repository is AccessControl {
      * @param digest The IPFS CID to be stored.
      * @param hashFunction The hash function used to create the CID.
      * @param size The size of the CID in bytes.
-     * @param exclusionRootHash The exclusion tree root hash for the given blocklist.
+     * @param exclusionTreeRoot The exclusion tree root for the given blocklist.
      */
     function addBlocklistHash(
         bytes32 digest,
         uint8 hashFunction,
         uint8 size,
-        bytes32 exclusionRootHash
+        uint256 exclusionTreeRoot
     ) public onlyRole(EDITOR_ROLE) {
         require(digest != bytes32(0), "Digest cannot be a zero value");
         require(hashFunction != 0, "Hash function cannot be a zero value");
@@ -105,8 +105,8 @@ contract Repository is AccessControl {
         address addr = msg.sender;
         blocklistHashes[addr].push(Multihash(digest, hashFunction, size));
 
-        storeExclusionRootHash(
-            exclusionRootHash,
+        storeExclusionTreeRoot(
+            exclusionTreeRoot,
             addr,
             digest,
             hashFunction,
@@ -115,23 +115,18 @@ contract Repository is AccessControl {
     }
 
     /**
-     * @dev Update the exclusion tree root hash for the given blocklist.
+     * @dev Update the exclusion tree root for the given blocklist.
      * @param digest The IPFS CID to be stored.
      * @param hashFunction The hash function used to create the CID.
      * @param size The size of the CID in bytes.
-     * @param exclusionRootHash The new exclusion tree root hash.
+     * @param exclusionTreeRoot The new exclusion tree root.
      */
     function updateExclusionTreeRoot(
         bytes32 digest,
         uint8 hashFunction,
         uint8 size,
-        bytes32 exclusionRootHash
+        uint256 exclusionTreeRoot
     ) public onlyRole(EDITOR_ROLE) {
-        require(
-            exclusionRootHash != bytes32(0),
-            "Exclusion tree root hash cannot be a zero value"
-        );
-
         address addr = msg.sender;
         (
             bytes32 storedDigest,
@@ -146,8 +141,8 @@ contract Repository is AccessControl {
             "Blocklist was not previously stored"
         );
 
-        storeExclusionRootHash(
-            exclusionRootHash,
+        storeExclusionTreeRoot(
+            exclusionTreeRoot,
             addr,
             digest,
             hashFunction,
@@ -155,25 +150,25 @@ contract Repository is AccessControl {
         );
     }
 
-    function storeExclusionRootHash(
-        bytes32 exclusionRootHash,
+    function storeExclusionTreeRoot(
+        uint256 exclusionTreeRoot,
         address editorAddress,
         bytes32 digest,
         uint8 hashFunction,
         uint8 size
     ) private {
         require(
-            exclusionRootHash != bytes32(0),
-            "Exclusion tree root hash cannot be a zero value"
+            exclusionTreeRoot != 0,
+            "Exclusion tree root cannot be a zero value"
         );
 
         bytes32 blocklistHash = keccak256(
             abi.encodePacked(digest, hashFunction, size)
         );
-        exclusionTreeRoots[editorAddress][blocklistHash] = exclusionRootHash;
+        exclusionTreeRoots[editorAddress][blocklistHash] = exclusionTreeRoot;
 
         emit ExclusionRootStored(
-            exclusionRootHash,
+            exclusionTreeRoot,
             editorAddress,
             blocklistHash
         );
@@ -253,22 +248,19 @@ contract Repository is AccessControl {
         bytes32 blocklistHash = keccak256(
             abi.encodePacked(storedDigest, storedHashFunction, storedSize)
         );
-        bytes32 exclusionRootHash = exclusionTreeRoots[editor][blocklistHash];
-        require(
-            input[1] == uint256(exclusionRootHash),
-            "Invalid exclusion root hash"
-        );
+        uint256 exclusionTreeRoot = exclusionTreeRoots[editor][blocklistHash];
+        require(input[2] == exclusionTreeRoot, "Invalid exclusion tree root");
         bool isValid = verifier.verifyProof(a, b, c, input);
         if (isValid) {
             emit ProofSubmitted(
                 msg.sender,
                 tornadoPoolAddress,
                 blocklistHash,
-                exclusionRootHash
+                exclusionTreeRoot
             );
             userProofs[msg.sender][tornadoPoolAddress][
                 blocklistHash
-            ] = exclusionRootHash;
+            ] = exclusionTreeRoot;
         }
         return isValid;
     }

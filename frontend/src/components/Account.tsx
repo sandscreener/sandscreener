@@ -6,7 +6,7 @@ export function Account() {
   const { data: ensName } = useEnsName({ address });
 
   return (
-    <div>
+    <div style={{ padding: 5, margin: 5 }}>
       Account: {ensName ?? address}
       {ensName ? ` (${address})` : null}
     </div>

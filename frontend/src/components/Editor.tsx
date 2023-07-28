@@ -12,10 +12,14 @@ import { ethers } from "ethers";
 import getCIDFromMultihash from "../hooks/getCIDFromMultihash";
 import CHAIN_GRAPH_URLS from "../config/subgraph";
 import { Button } from "react-bootstrap";
+import { ApolloClient, NormalizedCacheObject } from "@apollo/client";
+import getBlocklist from "../hooks/getBlocklist";
+import getBlocklistRoot from "../hooks/getBlocklistRoot";
 
 const Editor = (props: {
-  chainId: keyof typeof CHAIN_GRAPH_URLS;
+  chainId: keyof typeof CHAIN_GRAPH_URLS | undefined;
   editorRoleHashData: any;
+  apolloClient: ApolloClient<NormalizedCacheObject> | undefined;
 }) => {
   const { address, isConnected } = useAccount();
   const [cid, setCid] = useState("");
@@ -27,12 +31,26 @@ const Editor = (props: {
   const [latestBlocklistHash, setLatestBlocklistHash] = useState("");
   const contractDeployment: { address: string } | undefined = (
     contractDeployments as any
-  )[props.chainId];
+  )[props.chainId ?? "-1"];
   //TODO parse safely, may not be deployed on a specific chain yet
   const blocklistRegistryAddress = contractDeployment?.address ?? undefined;
-  const contractJson: string | undefined = (contractAbis as any)[props.chainId];
+  const contractJson: string | undefined = (contractAbis as any)[
+    props.chainId ?? "-1"
+  ];
   //TODO parse safely, may not be deployed on a specific chain yet
   const contractAbi = JSON.parse(contractJson ?? "{}");
+
+  const {
+    data: blocklistData,
+    error: blocklistLoadingError,
+    loading: isBlocklistLoading,
+  } = getBlocklist(cid);
+
+  useEffect(() => {
+    if (cid) {
+      convertCid();
+    }
+  }, [cid]);
 
   const {
     data: isEditor,
@@ -44,26 +62,35 @@ const Editor = (props: {
     functionName: "hasRole",
     args: [props.editorRoleHashData, address],
     enabled:
-      !!blocklistRegistryAddress && !!isConnected && !!props.editorRoleHashData,
-    onSuccess(data) {
-      console.log("Connected user is", data ? "Editor" : "not Editor");
-    },
+      !!blocklistRegistryAddress &&
+      !!isConnected &&
+      !!props.editorRoleHashData &&
+      !!props.chainId,
+
     onError(err) {
       console.log("isEditorError", err);
     },
   });
 
+  const {
+    exclusionTreeRoot,
+    error: blocklistRootLoadingError,
+    loading: blocklistRootLoading,
+  } = getBlocklistRoot(props.apolloClient, blocklistData);
+
   const { config: addListHashConfig } = usePrepareContractWrite({
     address: `0x${blocklistRegistryAddress?.slice(2)}`,
     abi: contractAbi,
-    functionName: "addListHash",
-    args: [digest, hashFunction, size],
+    functionName: "addBlocklistHash",
+    args: [digest, hashFunction, size, exclusionTreeRoot],
     enabled:
       !!blocklistRegistryAddress &&
       !!digest &&
       !!hashFunction &&
       !!size &&
-      !!isEditor,
+      !!isEditor &&
+      !!exclusionTreeRoot &&
+      !!props.chainId,
     onSuccess() {
       setIsPrepareListWriteError(false);
       setPrepareListWriteError(undefined);
@@ -94,7 +121,8 @@ const Editor = (props: {
     abi: contractAbi,
     args: [address],
     functionName: "getLatestHash",
-    enabled: !!blocklistRegistryAddress && !!isEditor && !!address,
+    enabled:
+      !!blocklistRegistryAddress && !!isEditor && !!address && !!props.chainId,
 
     onError(err) {
       console.log("address:", address);
@@ -136,9 +164,11 @@ const Editor = (props: {
   return (
     <div>
       {isEditor && (
-        <div>
+        <div style={{ padding: 5, margin: 5 }}>
+          You are an Editor
+          <br />
           {latestBlocklistHash &&
-            `You are an Editor. Your latest submitted blocklist is ${latestBlocklistHash}`}
+            `Your latest submitted blocklist is ${latestBlocklistHash}`}
           <form>
             <label htmlFor="cid">CID:</label>
             <input
@@ -152,43 +182,6 @@ const Editor = (props: {
             />
             <br />
 
-            <Button
-              style={{ padding: 5, margin: 5 }}
-              type="button"
-              disabled={!cid}
-              onClick={convertCid}
-            >
-              Convert CID to Multihash
-            </Button>
-            <br />
-            <label htmlFor="digest">Digest:</label>
-            <input
-              style={{ padding: 5, margin: 5 }}
-              type="text"
-              id="digest"
-              value={digest}
-              onChange={(e) => setDigest(e.target.value)}
-            />
-            <br />
-
-            <label htmlFor="hashFunction">Hash Function:</label>
-            <input
-              style={{ padding: 5, margin: 5 }}
-              type="text"
-              id="hashFunction"
-              value={hashFunction}
-              onChange={(e) => setHashFunction(e.target.value)}
-            />
-            <br />
-            <label htmlFor="size">Size:</label>
-            <input
-              style={{ padding: 5, margin: 5 }}
-              type="text"
-              id="size"
-              value={size}
-              onChange={(e) => setSize(e.target.value)}
-            />
-            <br />
             {(isPrepareListWriteError || isListHashError) && (
               <div>
                 Error: {(prepareListWriteError || addListHashError)?.message}
@@ -196,7 +189,6 @@ const Editor = (props: {
             )}
             <br />
             <Button
-              style={{ padding: 5, margin: 5 }}
               type="button"
               disabled={!writeListHash || isAddListHashLoading}
               onClick={() => writeListHash?.()}
@@ -205,6 +197,16 @@ const Editor = (props: {
                 ? "Submitting the Blocklist..."
                 : "Submit Blocklist"}
             </Button>
+            {isBlocklistLoading && <p>Loading blocklist...</p>}
+            {blocklistLoadingError && (
+              <p>Error loading blocklist: {blocklistLoadingError}</p>
+            )}
+            {blocklistRootLoading && (
+              <progress
+                value={undefined}
+                title="Constructing exclusion tree..."
+              />
+            )}
             {isAddListHashLoading && <progress value={undefined} />}
             {isAddListHashSuccess && (
               <div>

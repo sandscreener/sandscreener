@@ -12,13 +12,13 @@ import CHAIN_GRAPH_URLS from "../config/subgraph";
  * @returns Apollo client
  */
 const getApolloClient = (chainId: number | undefined) => {
-  const [appoloClient, setAppoloClient] =
+  const [apolloClient, setApolloClient] =
     useState<ApolloClient<NormalizedCacheObject>>();
 
   useEffect(() => {
     if (chainId && chainId.toString() !== "31337") {
       const id = chainId as keyof typeof CHAIN_GRAPH_URLS;
-      setAppoloClient(
+      setApolloClient(
         new ApolloClient({
           uri: CHAIN_GRAPH_URLS[id],
           cache: new InMemoryCache(),
@@ -26,7 +26,7 @@ const getApolloClient = (chainId: number | undefined) => {
       );
     }
   }, [chainId]);
-  return { appoloClient };
+  return { apolloClient: apolloClient };
 };
 
 export default getApolloClient;

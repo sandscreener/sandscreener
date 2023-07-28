@@ -1,5 +1,5 @@
 import { configureChains, createClient } from "wagmi";
-import { goerli, mainnet } from "wagmi/chains";
+import { goerli, mainnet, hardhat } from "wagmi/chains";
 import { CoinbaseWalletConnector } from "wagmi/connectors/coinbaseWallet";
 import { InjectedConnector } from "wagmi/connectors/injected";
 import { MetaMaskConnector } from "wagmi/connectors/metaMask";
@@ -10,7 +10,14 @@ import { infuraProvider } from "wagmi/providers/infura";
 import { publicProvider } from "wagmi/providers/public";
 
 const { chains, provider, webSocketProvider } = configureChains(
-  [goerli, ...(process.env.NODE_ENV === "development" ? [goerli] : [])],
+  [
+    goerli,
+    ...(process.env.NODE_ENV === "development"
+      ? [hardhat]
+      : [
+          /*TODO "mainnet" when ready to deploy to mainnet*/
+        ]),
+  ],
   [
     alchemyProvider({ apiKey: process.env.NEXT_PUBLIC_ALCHEMY_API_KEY! }),
     infuraProvider({ apiKey: process.env.NEXT_PUBLIC_INFURA_API_KEY! }),

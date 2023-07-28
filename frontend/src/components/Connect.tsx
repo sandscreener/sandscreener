@@ -1,5 +1,6 @@
-import React from 'react';
-import { useAccount, useConnect, useDisconnect } from 'wagmi';
+import React from "react";
+import { Button } from "react-bootstrap";
+import { useAccount, useConnect, useDisconnect } from "wagmi";
 
 export function Connect() {
   const { connector, isConnected } = useAccount();
@@ -8,28 +9,25 @@ export function Connect() {
   const { disconnect } = useDisconnect();
 
   return (
-    <div>
+    <div style={{ padding: 5, margin: 5 }}>
       <div>
         {isConnected && (
-          <button
-            style={{ padding: 5, margin: 5 }}
-            onClick={() => disconnect()}
-          >
+          <Button onClick={() => disconnect()}>
             Disconnect from {connector?.name}
-          </button>
+          </Button>
         )}
 
         {connectors
           .filter((x) => x.ready && x.id !== connector?.id)
           .map((x) => (
-            <button
-              style={{ padding: 5, margin: 5 }}
+            <Button
+              style={{ marginLeft: 5 }}
               key={x.id}
               onClick={() => connect({ connector: x })}
             >
               {x.name}
-              {isLoading && x.id === pendingConnector?.id && ' (connecting)'}
-            </button>
+              {isLoading && x.id === pendingConnector?.id && " (connecting)"}
+            </Button>
           ))}
       </div>
 

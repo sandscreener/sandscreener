@@ -7,7 +7,7 @@ import "./interfaces/ITornadoProxy.sol";
 /**
  * Tornado Cash pool instance validity checker for Goerli testnet and non-mainnet networks.
  */
-contract LightInstanceChecker is IInstanceStateChecker {
+contract LightInstanceStateChecker is IInstanceStateChecker {
     address public immutable tornadoProxyAddress;
 
     constructor(address _tornadoProxyAddress) {
