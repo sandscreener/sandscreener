@@ -1,6 +1,9 @@
 const CHAIN_GRAPH_URLS = {
   1: "https://api.thegraph.com/subgraphs/name/tornadocash/mainnet-tornado-subgraph",
   5: "https://api.thegraph.com/subgraphs/name/tornadocash/goerli-tornado-subgraph",
+  // A Goerli fork is used for the local testing
+  31337:
+    "https://api.thegraph.com/subgraphs/name/tornadocash/goerli-tornado-subgraph",
   10: "https://api.thegraph.com/subgraphs/name/tornadocash/optimism-tornado-subgraph",
   56: "https://api.thegraph.com/subgraphs/name/tornadocash/bsc-tornado-subgraph",
   100: "https://api.thegraph.com/subgraphs/name/tornadocash/xdai-tornado-subgraph",

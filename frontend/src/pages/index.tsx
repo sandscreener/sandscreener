@@ -1,6 +1,14 @@
 import "bootstrap/dist/css/bootstrap.min.css";
 import { utils } from "ffjavascript";
-import { useAccount, useContractRead, useProvider } from "wagmi";
+import {
+  useAccount,
+  useContractRead,
+  useContractWrite,
+  useNetwork,
+  usePrepareContractWrite,
+  useProvider,
+  useWaitForTransaction,
+} from "wagmi";
 import { buildMimcSponge } from "circomlibjs";
 import { Account, Connect, NetworkSwitcher } from "../components";
 import React, { useEffect, useState } from "react";
@@ -8,21 +16,22 @@ import { ethers } from "ethers";
 import contractDeployments from "../contracts/deployments.json";
 import contractAbis from "../contracts/contractAbi.json";
 import getBlocklist from "../hooks/getBlocklist";
-import Collapsible from "react-collapsible";
 import tornadoPoolABI from "../contracts/tornado/TornadoCash_Eth_01.json";
 import { parseNote } from "../utils/crypto.js";
 import Auditor from "../components/Auditor";
 import Editor from "../components/Editor";
 import getCIDFromMultihash from "../hooks/getCIDFromMultihash";
-import { isAddressValid } from "../utils/address_validation";
+import { isAddressValid } from "../utils/addressValidation";
 import MerkleTree from "fixed-merkle-tree";
 import { ApolloQueryResult, gql } from "@apollo/client";
 import CHAIN_GRAPH_URLS from "../config/subgraph";
 import getApolloClient from "../hooks/getApolloClient";
 import Button from "react-bootstrap/Button";
-import { Form } from "react-bootstrap";
+import { Accordion, Form } from "react-bootstrap";
 import getFeathersClient from "../hooks/getFeathersClient";
 import getTornadoPoolContract from "../hooks/getTornadoPool";
+import getExclusionTree from "../utils/getExclusionTree";
+import getProofsOfInnocense from "../hooks/getProofsOfInnocense";
 const groth16 = require("snarkjs").groth16;
 
 const CIRCUIT_WASM_PATH = "./zk/withdraw.wasm";
@@ -45,8 +54,10 @@ function Page() {
 
   const [proofInput, setProofInput] = useState<any | undefined>();
   const [isUsingGraph, setIsUsingGraph] = useState(true);
-  const { address, isConnected, connector } = useAccount();
-  const [chainId, setChainId] = useState<keyof typeof CHAIN_GRAPH_URLS>(5);
+  const { address: connectedUserAddress, isConnected } = useAccount();
+  const [chainId, setChainId] = useState<
+    keyof typeof CHAIN_GRAPH_URLS | undefined
+  >();
   const [blocklistRegistryAddress, setContractAddress] = useState(
     contractDeployments[5].address
   );
@@ -62,6 +73,7 @@ function Page() {
     "password"
   );
   const [poolAddress, setPoolAddress] = useState<string>();
+  const [proofQueryAddress, setProofQueryAddress] = useState<string>();
   const provider = useProvider({
     chainId: chainId,
   });
@@ -76,31 +88,39 @@ function Page() {
   const [nullifier, setNullifier] = useState("");
   const [secret, setSecret] = useState("");
   const [isCommitmentValid, setCommitmentValid] = useState(false);
-  const [contractAbi, setContractAbi] = useState(JSON.parse(contractAbis[5]));
+  const [contractAbi, setContractAbi] = useState<{}[] | undefined>();
 
-  const appoloClient = getApolloClient(chainId).appoloClient;
+  const apolloClient = getApolloClient(chainId).apolloClient;
+
+  const { chain, chains } = useNetwork();
 
   useEffect(() => {
-    connector?.getChainId().then((chainId) => {
-      if (chainId in CHAIN_GRAPH_URLS) {
-        const contractDeployment = (contractDeployments as Deployments)[
-          chainId
-        ];
-        if (contractDeployment) {
-          console.log("chainId", chainId);
-          setChainId(chainId as keyof typeof CHAIN_GRAPH_URLS);
-          setContractAddress(contractDeployment.address);
-          setContractAbi(JSON.parse((contractAbis as ABIs)[chainId]));
-        } else {
-          alert(
-            `The contract is not deplopyed to the chain with ID ${chainId}. Please switch to another chain.`
-          );
-        }
-      } else {
-        alert(`The chain with ID ${chainId} is not supported`);
+    if (chain?.id && chain.id in CHAIN_GRAPH_URLS) {
+      const contractDeployment = (contractDeployments as Deployments)[chain.id];
+      if (contractDeployment) {
+        console.log("chainId", chain.id);
+        setChainId(chain.id as keyof typeof CHAIN_GRAPH_URLS);
       }
-    });
-  }, [connector]);
+      if (contractDeployment) {
+        setContractAddress(contractDeployment.address);
+        setContractAbi(JSON.parse((contractAbis as ABIs)[chain.id]));
+      }
+    } else if (chain?.id) {
+      alert(
+        `The contract is not deplopyed to the ${
+          chain.name
+        }. Please switch to available chains: ${chains.map(
+          (chain) => chain.name + ", "
+        )}`
+      );
+    }
+  }, [chain]);
+
+  useEffect(() => {
+    if (!chainId) return;
+    if (chainId in CHAIN_GRAPH_URLS) {
+    }
+  }, [chainId]);
 
   /* Add List Hash */
   const [listAuthorAddress, _setListAuthorAddress] = useState("");
@@ -121,7 +141,7 @@ function Page() {
   } = useContractRead({
     address: `0x${blocklistRegistryAddress.slice(2)}`,
     abi: contractAbi,
-    args: [address],
+    args: [listAuthorAddress],
     functionName: "getLatestHash",
     enabled: !!listAuthorAddress,
     onError(err) {
@@ -138,6 +158,7 @@ function Page() {
   }, [blocklistHashData]);
 
   const checkAndSetNote = async (note: string) => {
+    if (!chainId) return;
     if (!note) {
       setNote("");
       setCommitmentHex("");
@@ -154,9 +175,10 @@ function Page() {
         alert("Only ETH notes are supported");
         return;
       }
-      console.log("parsedNote.netId", parsedNote.netId);
-      console.log("chainId", chainId);
-      if (parsedNote.netId.toString() !== chainId.toString()) {
+      if (
+        parsedNote.netId.toString() !== chainId.toString() &&
+        (parsedNote.netId.toString() !== "5" || chainId.toString() !== "31337")
+      ) {
         alert(
           "Please switch to the same network as the deposit was made on. The deposit was made on the " +
             parsedNote.netId +
@@ -170,11 +192,11 @@ function Page() {
         case "0.1":
           switch (chainId.toString()) {
             case "5":
+            case "31337":
               setPoolAddress("0x6Bf694a291DF3FeC1f7e69701E3ab6c592435Ae7");
               setPoolName("01ETH");
               break;
             case "1":
-            case "31337":
               setPoolAddress("0x12d66f87a04a9e220743712ce6d9bb1b5616b8fc");
               setPoolName("01ETH");
               break;
@@ -183,11 +205,11 @@ function Page() {
         case "1":
           switch (chainId.toString()) {
             case "5":
+            case "31337":
               setPoolAddress("0x3aac1cC67c2ec5Db4eA850957b967Ba153aD6279");
               setPoolName("1ETH");
               break;
             case "1":
-            case "31337":
               setPoolAddress("0x47CE0C6eD5B0Ce3d3A51fdb1C52DC66a7c3c2936");
               setPoolName("1ETH");
               break;
@@ -196,11 +218,11 @@ function Page() {
         case "10":
           switch (chainId.toString()) {
             case "5":
+            case "31337":
               setPoolAddress("0x723B78e67497E85279CB204544566F4dC5d2acA0");
               setPoolName("10ETH");
               break;
             case "1":
-            case "31337":
               setPoolAddress("0x910Cbd523D972eb0a6f4cAe4618aD62622b39DbF");
               setPoolName("10ETH");
               break;
@@ -209,11 +231,11 @@ function Page() {
         case "100":
           switch (chainId.toString()) {
             case "5":
+            case "31337":
               setPoolAddress("0x0E3A09dDA6B20aFbB34aC7cD4A6881493f3E7bf7");
               setPoolName("100ETH");
               break;
             case "1":
-            case "31337":
               setPoolAddress("0xA160cdAB225685dA1d56aa342Ad8841c3b53f291");
               setPoolName("100ETH");
               break;
@@ -240,7 +262,7 @@ function Page() {
       const events = await tornadoPoolContract.queryFilter(filter);
       setCommitmentValid(events.length > 0);
       if (events.length <= 0) {
-        alert("Commitment not found");
+        alert(`Commitment not found in ${tornadoPoolContract.address}`);
         setNote(note);
         setCommitmentHex("");
         setNullifierHash("");
@@ -252,6 +274,20 @@ function Page() {
     };
     fetchEvents();
   }, [commitmentHex, tornadoPoolContract, isCommitmentValid]);
+
+  const connectedUserProofs = getProofsOfInnocense(
+    blocklistRegistryAddress,
+    contractAbi,
+    provider,
+    connectedUserAddress
+  );
+
+  const otherUserProofs = getProofsOfInnocense(
+    blocklistRegistryAddress,
+    contractAbi,
+    provider,
+    proofQueryAddress
+  );
 
   const {
     data: blocklistData,
@@ -278,48 +314,15 @@ function Page() {
     }
   `;
 
-  const blocklistedCommitmentsQuery = gql`
-    query Deposits(
-      $limit: Int
-      $offset: Int
-      $amount: String
-      $currency: String
-      $blocklist: [String!]
-    ) {
-      deposits(
-        orderBy: commitment
-        first: $limit
-        where: {
-          amount: $amount
-          currency: $currency
-          index_gt: $offset
-          from_in: $blocklist
-        }
-      ) {
-        from
-        commitment
-        index
-      }
-    }
-  `;
-
   const feathersClient = getFeathersClient(PRODUCTION);
 
-  async function getTrees() {
+  async function getTrees(blocklistedAddresses: string[]) {
     let depositTree: MerkleTree;
     let exclusionTree: MerkleTree;
 
-    if (isUsingGraph && appoloClient) {
+    if (isUsingGraph && apolloClient) {
       const mimcSponge = await buildMimcSponge();
       depositTree = new MerkleTree(20, [], {
-        hashFunction: (left, right) =>
-          mimcSponge.F.toString(
-            mimcSponge.multiHash([BigInt(left), BigInt(right)])
-          ),
-        zeroElement:
-          "21663839004416932945382355908790599225266501822907911457504978515578255421292",
-      });
-      exclusionTree = new MerkleTree(20, [], {
         hashFunction: (left, right) =>
           mimcSponge.F.toString(
             mimcSponge.multiHash([BigInt(left), BigInt(right)])
@@ -331,7 +334,7 @@ function Page() {
       let returnedCount: number = 0;
       let i: number = 0;
       do {
-        await appoloClient
+        await apolloClient
           .query({
             query: poolDepositsQuery,
             variables: {
@@ -349,7 +352,7 @@ function Page() {
                 (d: { commitment: string }) => d.commitment
               )
             );
-            return console.log(
+            console.log(
               `Fetched ${
                 pageSize * (i - 1) + result.data.deposits.length
               } deposits`
@@ -360,55 +363,11 @@ function Page() {
           });
       } while (returnedCount === pageSize);
 
-      i = 0;
-      var commitments: string[] = [];
-      do {
-        await appoloClient
-          .query({
-            query: blocklistedCommitmentsQuery,
-            variables: {
-              limit: pageSize,
-              offset: pageSize * i,
-              currency: "eth",
-              amount: "0.1",
-              blocklist: blocklistData?.blocklist,
-            },
-          })
-          .then(function (result: ApolloQueryResult<any>) {
-            i++;
-            returnedCount = result.data.deposits.length;
-            commitments.push(
-              ...result.data.deposits.map(
-                (d: { commitment: string }) => d.commitment
-              )
-            );
-            return console.log(
-              `Fetched ${
-                pageSize * i + result.data.deposits.length
-              } blocklisted commitments`
-            );
-          })
-          .catch((err) => {
-            console.log("Error fetching blocklisted commitment data: ", err);
-          });
-      } while (returnedCount === pageSize);
-
-      console.log("blocklisted commitments", commitments);
-      //TODO extract exclusion tree code into a separate module and use it in the backend code as well
-      for (let j = 0; j < commitments.length - 1; j++) {
-        if (j == 0) {
-          exclusionTree.insert(BigInt(0).toString());
-          exclusionTree.insert(commitments[0]);
-        }
-        exclusionTree.insert(commitments[j]);
-        exclusionTree.insert(commitments[j + 1]);
-      }
-      console.log("exclusion tree", exclusionTree);
-      exclusionTree.insert(
-        exclusionTree.elements[exclusionTree.elements.length - 1]
-      );
-      exclusionTree.insert(
-        "0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"
+      exclusionTree = await getExclusionTree(
+        apolloClient,
+        blocklistedAddresses,
+        currency,
+        amount
       );
 
       return { depositTree, exclusionTree };
@@ -441,13 +400,16 @@ function Page() {
   async function generateProof() {
     setProofStatus("pending");
 
-    const { depositTree, exclusionTree } = await getTrees();
+    if (!blocklistData?.blocklist) {
+      return;
+    }
+    const { depositTree, exclusionTree } = await getTrees(
+      blocklistData.blocklist
+    );
 
     if (!depositTree || !exclusionTree || !tornadoPoolContract) {
       return;
     }
-
-    console.log("exclusionTree", exclusionTree.elements);
 
     //Find first element of the parsed exclusion tree that is greater than the commitment hex:
     const greaterIndex = exclusionTree!.elements.findIndex((leaf) => {
@@ -561,16 +523,9 @@ function Page() {
     abi: contractAbi,
     functionName: "EDITOR_ROLE",
     enabled: !!isConnected,
-    onSuccess(data) {
-      console.log("editorRoleHash", data);
-    },
   });
 
-  const {
-    data: proofVerificationResult,
-    isError: proofVerificationError,
-    isLoading: proofVerificationLoading,
-  } = useContractRead({
+  const { config: verifyProofConfig } = usePrepareContractWrite({
     address: `0x${blocklistRegistryAddress.slice(2)}`,
     abi: contractAbi,
     args: [
@@ -578,11 +533,52 @@ function Page() {
       proofInput?.b,
       proofInput?.c,
       proofInput?.publicInputs,
+      tornadoPoolContract?.address,
+      listAuthorAddress,
     ],
     functionName: "verifyProof",
-    enabled: !!isConnected && !!proofInput,
+    enabled:
+      !!isConnected &&
+      !!proofInput &&
+      !!tornadoPoolContract &&
+      !!listAuthorAddress,
     onSuccess(data) {
-      processProofResult(data);
+      writeProofPrompt(data);
+    },
+    onError(err) {
+      alert("Error submitting proof");
+      console.log("proofVerificationError", err);
+    },
+  });
+
+  const {
+    data: proofVerificationData,
+    write: verifyProof,
+    reset: resetProofVerification,
+  } = useContractWrite(verifyProofConfig);
+
+  useEffect(() => {
+    if (verifyProof) {
+      verifyProof();
+      setProofInput(undefined);
+      resetProofVerification();
+    }
+  }, [verifyProof]);
+
+  const {
+    isLoading: isProofVerificationLoading,
+    isSuccess: isProofVerificationSuccess,
+    isError: isProofVerificationError,
+  } = useWaitForTransaction({
+    hash: proofVerificationData?.hash,
+    onSuccess(data) {
+      setProofStatus("success");
+    },
+    onError(err) {
+      setProofStatus("error");
+    },
+    onSettled(data, error) {
+      setProofStatus("idle");
     },
   });
 
@@ -600,94 +596,172 @@ function Page() {
           <Account />
           <NetworkSwitcher />
           <hr />
-          <div>
-            <form>
-              <label htmlFor="listAuthor">List Author Address:</label>
-              <input
-                style={{ padding: 5, margin: 5 }}
-                type="text"
-                id="listAuthor"
-                value={listAuthorAddress}
-                onChange={(e) => {
-                  const addr = `0x${e.target.value.slice(2)}`;
-                  setListAuthorAddress(addr);
-                }}
-              />
-              <br />
-            </form>
-            {latestBlocklistHashForAddress && (
-              <p>Latest hash: {latestBlocklistHashForAddress}</p>
-            )}
-            {isBlocklistLoading && <p>Loading blocklist...</p>}
-            {blocklistLoadingError && (
-              <p>Error loading blocklist: {blocklistLoadingError}</p>
-            )}
-            {blocklistData && (
-              <div>
-                <Collapsible
-                  lazyRender
-                  trigger="Blocklist:"
-                  overflowWhenOpen="visible"
-                >
-                  <ul>
-                    {blocklistData.blocklist.map((item) => (
-                      <li key={item}>{item}</li>
-                    ))}
-                  </ul>
-                </Collapsible>
+          {chain?.unsupported && (
+            <>
+              <p>
+                {chain?.name.replace("Chain 1", "Ethereum Mainnet")} is not
+                supported
+              </p>
+              <p>
+                Please swtch to a supproted chain:{" "}
+                {chains.map((chain) => chain.name).join(", ")}
+              </p>
+            </>
+          )}
+          {!chain?.unsupported && (
+            <>
+              <div style={{ padding: 5, margin: 5 }}>
+                Explore Blocklists
+                <form>
+                  <label htmlFor="listAuthor">List Author Address:</label>
+                  <input
+                    style={{ padding: 5, margin: 5 }}
+                    type="text"
+                    id="listAuthor"
+                    value={listAuthorAddress}
+                    onChange={(e) => {
+                      const addr = `0x${e.target.value.slice(2)}`;
+                      setListAuthorAddress(addr);
+                    }}
+                  />
+                  <br />
+                </form>
+                {listAuthorAddress && latestBlocklistHashForAddress && (
+                  <p>Latest hash: {latestBlocklistHashForAddress}</p>
+                )}
+                {isBlocklistLoading && <p>Loading blocklist...</p>}
+                {blocklistLoadingError && (
+                  <p>Error loading blocklist: {blocklistLoadingError}</p>
+                )}
+                {blocklistData && (
+                  <div>
+                    <Accordion>
+                      <Accordion.Item eventKey="0">
+                        <Accordion.Header>Blocklist</Accordion.Header>
+                        <Accordion.Body>
+                          <ul>
+                            {blocklistData.blocklist.map((item) => (
+                              <li key={item}>{item}</li>
+                            ))}
+                          </ul>
+                        </Accordion.Body>
+                      </Accordion.Item>
+                    </Accordion>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-          <hr />
+              <hr />
+              <div style={{ padding: 5, margin: 5 }}>
+                Prove Your Innocense
+                <form>
+                  <Form.Switch
+                    type="switch"
+                    label="Use Graph"
+                    id="disabled-custom-switch"
+                    checked={isUsingGraph}
+                    onChange={function (e) {
+                      return setIsUsingGraph(e.target.checked);
+                    }}
+                  />
+                  <label htmlFor="note">Note:</label>
+                  <input
+                    style={{ padding: 5, margin: 5 }}
+                    type={noteInputType}
+                    id="note"
+                    value={note}
+                    onChange={function (e) {
+                      return checkAndSetNote(e.target.value);
+                    }}
+                  />
+                  <br />
+                  <Button
+                    style={{ paddingTop: 5, marginTop: 5 }}
+                    type="button"
+                    disabled={
+                      proofStatus === "pending" ||
+                      !listAuthorAddress ||
+                      listAuthorAddressError ||
+                      !commitmentHex ||
+                      !isCommitmentValid ||
+                      !feathersClient ||
+                      !poolName ||
+                      !chainId
+                    }
+                    onClick={generateProof}
+                  >
+                    {proofStatus === "pending"
+                      ? "Generating proof..."
+                      : "Generate proof"}
+                  </Button>
+                  <br />
+                  {proofStatus === "success" && "Proof submitted!"}
+                  {proofStatus === "pending" && <progress value={undefined} />}
+                </form>
+                {connectedUserProofs.length > 0 && (
+                  <div style={{ paddingTop: 5, marginTop: 5 }}>
+                    <Accordion>
+                      <Accordion.Item eventKey="0">
+                        <Accordion.Header>Your Recent Proofs</Accordion.Header>
+                        <Accordion.Body>
+                          <ul>
+                            {connectedUserProofs.map((item) => (
+                              <li
+                                key={item.txHash}
+                              >{`Tornado pool: ${item.poolAddress}; editor: ${item.editor}; blocklist exclusion root submitted in block ${item.blockNumber}`}</li>
+                            ))}
+                          </ul>
+                        </Accordion.Body>
+                      </Accordion.Item>
+                    </Accordion>
+                  </div>
+                )}
+                <div>
+                  <hr />
+                  Check User's Innocense
+                  <form>
+                    <label htmlFor="proofQueryAddress">User Address:</label>
+                    <input
+                      style={{ padding: 5, margin: 5 }}
+                      type="text"
+                      id="proofQueryAddress"
+                      value={proofQueryAddress ?? ""}
+                      onChange={(e) => {
+                        const addr = `0x${e.target.value.slice(2)}`;
+                        setProofQueryAddress(addr);
+                      }}
+                    />
+                  </form>
+                </div>
+                {proofQueryAddress && otherUserProofs.length > 0 && (
+                  <div style={{ paddingTop: 5, marginTop: 5 }}>
+                    <Accordion>
+                      <Accordion.Item eventKey="0">
+                        <Accordion.Header>
+                          {`Proofs for ${proofQueryAddress}`}
+                        </Accordion.Header>
+                        <Accordion.Body>
+                          <ul>
+                            {otherUserProofs.map((item) => (
+                              <li
+                                key={item.blockNumber}
+                              >{`Tornado pool: ${item.poolAddress}; editor: ${item.editor}; blocklist exclusion root submitted in block ${item.blockNumber}`}</li>
+                            ))}
+                          </ul>
+                        </Accordion.Body>
+                      </Accordion.Item>
+                    </Accordion>
+                  </div>
+                )}
+              </div>
+              <hr />
+            </>
+          )}
           <div>
-            <form>
-              <Form.Switch
-                type="switch"
-                label="Use Graph"
-                id="disabled-custom-switch"
-                checked={isUsingGraph}
-                onChange={function (e) {
-                  return setIsUsingGraph(e.target.checked);
-                }}
-              />
-              <label htmlFor="note">Note:</label>
-              <input
-                style={{ padding: 5, margin: 5 }}
-                type={noteInputType}
-                id="note"
-                value={note}
-                onChange={function (e) {
-                  return checkAndSetNote(e.target.value);
-                }}
-              />
-              <br />
-              <Button
-                style={{ padding: 5, margin: 5 }}
-                type="button"
-                disabled={
-                  proofStatus === "pending" ||
-                  !listAuthorAddress ||
-                  listAuthorAddressError ||
-                  !commitmentHex ||
-                  !isCommitmentValid ||
-                  !feathersClient ||
-                  !poolName ||
-                  !chainId
-                }
-                onClick={generateProof}
-              >
-                {proofStatus === "pending"
-                  ? "Generating proof..."
-                  : "Generate proof"}
-              </Button>
-              <br />
-              {proofStatus === "success" && "Proof generated!"}
-              {proofStatus === "pending" && <progress value={undefined} />}
-            </form>
-          </div>
-          <hr />
-          <div>
-            <Editor chainId={chainId} editorRoleHashData={editorRoleHashData} />
+            <Editor
+              chainId={chainId}
+              editorRoleHashData={editorRoleHashData}
+              apolloClient={apolloClient}
+            />
             <Auditor
               chainId={chainId}
               editorRoleHashData={editorRoleHashData}
@@ -697,6 +771,17 @@ function Page() {
       )}
     </>
   );
+
+  function writeProofPrompt(valid: any) {
+    if (valid as boolean) {
+      alert(
+        "The proof is ready to be submitted into the regsitry contract. You will now be prompted to perform the transaction by your wallet."
+      );
+    } else {
+      setProofStatus("error");
+      alert("Proof submission failed - proof is invalid");
+    }
+  }
 
   function processProofResult(valid: any) {
     if (valid as boolean) {

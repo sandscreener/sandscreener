@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import axios from 'axios';
+import { useEffect, useState } from "react";
+import axios from "axios";
 
 type Blocklist = {
   blocklist: string[];
@@ -21,19 +21,20 @@ const getBlocklist = (cid: string | undefined) => {
       // Retrieve the file from IPFS
       try {
         const response = await axios.get(url, {
-          responseType: 'arraybuffer',
+          responseType: "arraybuffer",
           headers: {
-            Accept: 'text/plain',
-            'Accept-Encoding': 'gzip,deflate,compress',
+            Accept: "text/plain",
+            "Accept-Encoding": "gzip,deflate,compress",
           },
         });
-        const rawBlocklist = Buffer.from(response.data, 'binary').toString(
-          'utf8'
+        const rawBlocklist = Buffer.from(response.data, "binary").toString(
+          "utf8"
         );
         setData(JSON.parse(rawBlocklist));
       } catch (e: any) {
         setError(e);
       } finally {
+        console.log(`Fetched blocklist from IPFS: ${cid}`);
         setLoading(false);
       }
     };

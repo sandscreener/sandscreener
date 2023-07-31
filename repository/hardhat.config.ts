@@ -8,9 +8,16 @@ module.exports = {
     localhost: {
       chainId: 31337,
       url: "http://127.0.0.1:8545",
+      forking: {
+        url: process.env.GOERLI_URL,
+      },
     },
     hardhat: {
       chainId: 31337,
+      forking: {
+        url: process.env.GOERLI_URL,
+        blockNumber: 9299399,
+      },
     },
     goerli: {
       chainId: 5,
@@ -21,7 +28,7 @@ module.exports = {
   solidity: {
     compilers: [
       {
-        version: "0.8.16",
+        version: "0.8.18",
         settings: {
           evmVersion: "istanbul",
           optimizer: {

@@ -8,17 +8,17 @@ import {
 } from "wagmi";
 import contractDeployments from "../contracts/deployments.json";
 import contractAbis from "../contracts/contractAbi.json";
-import { isAddressValid } from "../utils/address_validation";
+import { isAddressValid } from "../utils/addressValidation";
 import CHAIN_GRAPH_URLS from "../config/subgraph";
 import { Button } from "react-bootstrap";
 
 const Auditor = (props: {
-  chainId: keyof typeof CHAIN_GRAPH_URLS;
+  chainId: keyof typeof CHAIN_GRAPH_URLS | undefined;
   editorRoleHashData: any;
 }) => {
   const contractDeployment: { address: string } | undefined = (
     contractDeployments as any
-  )[props.chainId ?? "5"];
+  )[props.chainId ?? "-1"];
   //TODO parse safely, may not be deployed on a specific chain yet
   const repositoryAddress = contractDeployment?.address;
   const [editorAddress, _setEditorAddress] = useState("");
@@ -35,7 +35,7 @@ const Auditor = (props: {
     useState<Error>();
 
   const contractJson: string | undefined = (contractAbis as any)[
-    props.chainId ?? "5"
+    props.chainId ?? "-1"
   ];
   //TODO parse safely, may not be deployed on a specific chain yet
   const contractAbi = JSON.parse(contractJson ?? "{}");
@@ -50,10 +50,7 @@ const Auditor = (props: {
     address: `0x${repositoryAddress?.slice(2)}`,
     abi: contractAbi,
     functionName: "DEFAULT_ADMIN_ROLE",
-    enabled: !!repositoryAddress && !!isConnected,
-    onSuccess(data) {
-      console.log("adminRoleHash", adminRoleHashData);
-    },
+    enabled: !!repositoryAddress && !!isConnected && !!props.chainId,
   });
 
   const {
@@ -65,9 +62,12 @@ const Auditor = (props: {
     abi: contractAbi,
     functionName: "hasRole",
     args: [adminRoleHashData, address],
-    enabled: !!repositoryAddress && !!isConnected && !!adminRoleHashData,
+    enabled:
+      !!repositoryAddress &&
+      !!isConnected &&
+      !!adminRoleHashData &&
+      !!props.chainId,
     onSuccess(data) {
-      console.log("Connected user is", data ? "Admin" : "not Admin");
       setIsPrepareEditorWriteError(false);
       setPrepareEditorWriteError(undefined);
     },
@@ -86,7 +86,8 @@ const Auditor = (props: {
       !!repositoryAddress &&
       !!editorAddress &&
       !!isAdmin &&
-      isEditorAddressValid,
+      isEditorAddressValid &&
+      !!props.chainId,
     onSuccess() {
       setIsPrepareEditorWriteError(false);
       setPrepareEditorWriteError(undefined);
@@ -117,7 +118,8 @@ const Auditor = (props: {
       !!repositoryAddress &&
       !!editorAddress &&
       !!isAdmin &&
-      isEditorAddressValid,
+      isEditorAddressValid &&
+      !!props.chainId,
     onSuccess() {
       setIsPrepareEditorWriteError(false);
       setPrepareEditorWriteError(undefined);
@@ -142,8 +144,8 @@ const Auditor = (props: {
   return (
     <div>
       {isAdmin && (
-        <div>
-          You are the Auditor.
+        <div style={{ padding: 5, margin: 5 }}>
+          You are the Auditor
           <form>
             <label htmlFor="editorAddress">Editor Address:</label>
             <input
@@ -155,7 +157,6 @@ const Auditor = (props: {
             />
             <br />
             <Button
-              style={{ padding: 5, margin: 5 }}
               type="button"
               disabled={
                 !writeGrantEditor ||
@@ -184,7 +185,7 @@ const Auditor = (props: {
               </div>
             )}
             <Button
-              style={{ padding: 5, margin: 5 }}
+              style={{ margin: 5 }}
               type="button"
               disabled={
                 !writeRevokeEditor ||
