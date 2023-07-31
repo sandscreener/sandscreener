@@ -10,7 +10,7 @@ type Blocklist = {
  * @param cid CID of the blocklist file
  * @returns parsed blocklist JS
  */
-const getBlocklist = (cid: string | undefined) => {
+const useBlocklist = (cid: string | undefined) => {
   const [data, setData] = useState<Blocklist | undefined>();
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -43,4 +43,4 @@ const getBlocklist = (cid: string | undefined) => {
   return { data, error, loading };
 };
 
-export default getBlocklist;
+export default useBlocklist;

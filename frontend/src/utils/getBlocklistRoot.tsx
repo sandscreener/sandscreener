@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import getExclusionTree from "../utils/getExclusionTree";
+import getExclusionTree from "./getExclusionTree";
 import { ApolloClient, NormalizedCacheObject } from "@apollo/client";
 import { ethers } from "ethers";
 
@@ -10,9 +10,9 @@ type Blocklist = {
 /**
  * Get the blocklist file from IPFS
  * @param cid CID of the blocklist file
- * @returns parsed blocklist JS
+ * @returns exclusion Merkle tree root
  */
-const getBlocklistRoot = (
+const useBlocklistRoot = (
   apolloClient: ApolloClient<NormalizedCacheObject> | undefined,
   blocklistData: Blocklist | undefined,
   currency: string,
@@ -53,8 +53,8 @@ const getBlocklistRoot = (
     ).then((root) => {
       setExclusionTreeRoot(ethers.utils.hexlify(BigInt(root)));
     });
-  }, [exclusionTreeRoot, blocklistData, apolloClient]);
+  }, [exclusionTreeRoot, blocklistData, apolloClient, currency, amount]);
   return { exclusionTreeRoot, error, loading };
 };
 
-export default getBlocklistRoot;
+export default useBlocklistRoot;

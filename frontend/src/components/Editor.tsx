@@ -9,12 +9,12 @@ import {
 import contractDeployments from "../contracts/deployments.json";
 import contractAbis from "../contracts/contractAbi.json";
 import { ethers } from "ethers";
-import getCIDFromMultihash from "../hooks/getCIDFromMultihash";
+import getCIDFromMultihash from "../utils/getCIDFromMultihash";
 import CHAIN_GRAPH_URLS from "../config/subgraph";
 import { Button, Dropdown } from "react-bootstrap";
 import { ApolloClient, NormalizedCacheObject } from "@apollo/client";
-import getBlocklist from "../hooks/getBlocklist";
-import getBlocklistRoot from "../hooks/getBlocklistRoot";
+import useBlocklist from "../hooks/useBlocklist";
+import useBlocklistRoot from "../utils/getBlocklistRoot";
 
 const Editor = (props: {
   chainId: keyof typeof CHAIN_GRAPH_URLS | undefined;
@@ -44,7 +44,7 @@ const Editor = (props: {
     data: blocklistData,
     error: blocklistLoadingError,
     loading: isBlocklistLoading,
-  } = getBlocklist(cid);
+  } = useBlocklist(cid);
 
   useEffect(() => {
     if (cid) {
@@ -78,7 +78,7 @@ const Editor = (props: {
     exclusionTreeRoot,
     error: blocklistRootLoadingError,
     loading: blocklistRootLoading,
-  } = getBlocklistRoot(
+  } = useBlocklistRoot(
     props.apolloClient,
     blocklistData,
     "eth" /*TODO auto-fill from dropdown*/,
