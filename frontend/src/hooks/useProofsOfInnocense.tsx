@@ -3,7 +3,7 @@ import { ethers } from "ethers";
 import { useEffect, useState } from "react";
 import { isAddressValid } from "../utils/addressValidation";
 
-export default function getProofsOfInnocense(
+export default function useProofsOfInnocence(
   blocklistRegistryAddress: string,
   contractAbi: {}[] | undefined,
   provider: Provider,

@@ -31,7 +31,7 @@ import { Accordion, Form } from "react-bootstrap";
 import getFeathersClient from "../hooks/getFeathersClient";
 import getTornadoPoolContract from "../hooks/getTornadoPool";
 import getExclusionTree from "../utils/getExclusionTree";
-import getProofsOfInnocense from "../hooks/getProofsOfInnocense";
+import getProofsOfInnocence from "../hooks/getProofsOfInnocence";
 const groth16 = require("snarkjs").groth16;
 
 const CIRCUIT_WASM_PATH = "./zk/withdraw.wasm";
@@ -275,14 +275,14 @@ function Page() {
     fetchEvents();
   }, [commitmentHex, tornadoPoolContract, isCommitmentValid]);
 
-  const connectedUserProofs = getProofsOfInnocense(
+  const connectedUserProofs = getProofsOfInnocence(
     blocklistRegistryAddress,
     contractAbi,
     provider,
     connectedUserAddress
   );
 
-  const otherUserProofs = getProofsOfInnocense(
+  const otherUserProofs = getProofsOfInnocence(
     blocklistRegistryAddress,
     contractAbi,
     provider,
@@ -652,7 +652,7 @@ function Page() {
               </div>
               <hr />
               <div style={{ padding: 5, margin: 5 }}>
-                Prove Your Innocense
+                Prove Your Innocence
                 <form>
                   <Form.Switch
                     type="switch"
@@ -717,7 +717,7 @@ function Page() {
                 )}
                 <div>
                   <hr />
-                  Check User's Innocense
+                  Check User's Innocence
                   <form>
                     <label htmlFor="proofQueryAddress">User Address:</label>
                     <input
