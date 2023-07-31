@@ -10,7 +10,12 @@ export default function getProofsOfInnocense(
   userAddress: string | undefined
 ) {
   const [userProofs, setUserProofs] = useState<
-    { poolAddress: string; blockNumber: string; editor: string }[]
+    {
+      poolAddress: string;
+      txHash: string;
+      editor: string;
+      blockNumber: number;
+    }[]
   >([]);
 
   useEffect(() => {
@@ -46,8 +51,9 @@ export default function getProofsOfInnocense(
           });
           return {
             poolAddress: proofEvent.args?.poolAddress.toString() ?? "",
-            blockNumber: foundRootEvent?.blockNumber.toString() ?? "",
+            txHash: proofEvent?.transactionHash.toString() ?? "",
             editor: foundRootEvent?.args?.editorAddress.toString() ?? "",
+            blockNumber: foundRootEvent?.blockNumber ?? 0,
           };
         })
       );

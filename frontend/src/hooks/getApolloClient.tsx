@@ -16,7 +16,7 @@ const getApolloClient = (chainId: number | undefined) => {
     useState<ApolloClient<NormalizedCacheObject>>();
 
   useEffect(() => {
-    if (chainId && chainId.toString() !== "31337") {
+    if (chainId as keyof typeof CHAIN_GRAPH_URLS) {
       const id = chainId as keyof typeof CHAIN_GRAPH_URLS;
       setApolloClient(
         new ApolloClient({

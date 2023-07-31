@@ -9,11 +9,15 @@ import MerkleTree from "fixed-merkle-tree";
 
 export default async function getExclusionTree(
   apolloClient: ApolloClient<NormalizedCacheObject>,
-  blocklistedAddresses: string[]
+  blocklistedAddresses: string[],
+  currency: string,
+  amount: string
 ) {
   const commitments = await getBlocklistedCommitments(
     apolloClient,
-    blocklistedAddresses
+    blocklistedAddresses,
+    currency,
+    amount
   );
   //TODO extract exclusion tree code into a separate module and use it in the backend code as well
   const exclusionTree = await buildExclusionTree(commitments);
@@ -22,7 +26,9 @@ export default async function getExclusionTree(
 
 async function getBlocklistedCommitments(
   apolloClient: ApolloClient<NormalizedCacheObject>,
-  blocklistedAddresses: string[]
+  blocklistedAddresses: string[],
+  currency: string,
+  amount: string
 ) {
   const pageSize: number = 1000;
   const blocklistedCommitmentsQuery = gql`
@@ -61,8 +67,8 @@ async function getBlocklistedCommitments(
         variables: {
           limit: pageSize,
           offset: pageSize * i,
-          currency: "eth",
-          amount: "0.1",
+          currency: currency,
+          amount: amount,
           blocklist: blocklistedAddresses,
         },
       })

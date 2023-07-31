@@ -30,7 +30,7 @@ import Button from "react-bootstrap/Button";
 import { Accordion, Form } from "react-bootstrap";
 import getFeathersClient from "../hooks/getFeathersClient";
 import getTornadoPoolContract from "../hooks/getTornadoPool";
-import getExclusionTree from "../utils/exclusionTree";
+import getExclusionTree from "../utils/getExclusionTree";
 import getProofsOfInnocense from "../hooks/getProofsOfInnocense";
 const groth16 = require("snarkjs").groth16;
 
@@ -365,7 +365,9 @@ function Page() {
 
       exclusionTree = await getExclusionTree(
         apolloClient,
-        blocklistedAddresses
+        blocklistedAddresses,
+        currency,
+        amount
       );
 
       return { depositTree, exclusionTree };
@@ -541,7 +543,7 @@ function Page() {
       !!tornadoPoolContract &&
       !!listAuthorAddress,
     onSuccess(data) {
-      processProofResult(data);
+      writeProofPrompt(data);
     },
     onError(err) {
       alert("Error submitting proof");
@@ -552,8 +554,6 @@ function Page() {
   const {
     data: proofVerificationData,
     write: verifyProof,
-    error: proofVerificationError,
-    isError: isProofVerificationError,
     reset: resetProofVerification,
   } = useContractWrite(verifyProofConfig);
 
@@ -568,8 +568,18 @@ function Page() {
   const {
     isLoading: isProofVerificationLoading,
     isSuccess: isProofVerificationSuccess,
+    isError: isProofVerificationError,
   } = useWaitForTransaction({
     hash: proofVerificationData?.hash,
+    onSuccess(data) {
+      setProofStatus("success");
+    },
+    onError(err) {
+      setProofStatus("error");
+    },
+    onSettled(data, error) {
+      setProofStatus("idle");
+    },
   });
 
   /* UI */
@@ -586,6 +596,18 @@ function Page() {
           <Account />
           <NetworkSwitcher />
           <hr />
+          {chain?.unsupported && (
+            <>
+              <p>
+                {chain?.name.replace("Chain 1", "Ethereum Mainnet")} is not
+                supported
+              </p>
+              <p>
+                Please swtch to a supproted chain:{" "}
+                {chains.map((chain) => chain.name).join(", ")}
+              </p>
+            </>
+          )}
           {!chain?.unsupported && (
             <>
               <div style={{ padding: 5, margin: 5 }}>
@@ -672,7 +694,7 @@ function Page() {
                       : "Generate proof"}
                   </Button>
                   <br />
-                  {proofStatus === "success" && "Proof generated!"}
+                  {proofStatus === "success" && "Proof submitted!"}
                   {proofStatus === "pending" && <progress value={undefined} />}
                 </form>
                 {connectedUserProofs.length > 0 && (
@@ -684,7 +706,7 @@ function Page() {
                           <ul>
                             {connectedUserProofs.map((item) => (
                               <li
-                                key={item.blockNumber}
+                                key={item.txHash}
                               >{`Tornado pool: ${item.poolAddress}; editor: ${item.editor}; blocklist exclusion root submitted in block ${item.blockNumber}`}</li>
                             ))}
                           </ul>
@@ -749,6 +771,17 @@ function Page() {
       )}
     </>
   );
+
+  function writeProofPrompt(valid: any) {
+    if (valid as boolean) {
+      alert(
+        "The proof is ready to be submitted into the regsitry contract. You will now be prompted to perform the transaction by your wallet."
+      );
+    } else {
+      setProofStatus("error");
+      alert("Proof submission failed - proof is invalid");
+    }
+  }
 
   function processProofResult(valid: any) {
     if (valid as boolean) {

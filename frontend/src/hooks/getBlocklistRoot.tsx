@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import getExclusionTree from "../utils/exclusionTree";
+import getExclusionTree from "../utils/getExclusionTree";
 import { ApolloClient, NormalizedCacheObject } from "@apollo/client";
 import { ethers } from "ethers";
 
@@ -14,7 +14,9 @@ type Blocklist = {
  */
 const getBlocklistRoot = (
   apolloClient: ApolloClient<NormalizedCacheObject> | undefined,
-  blocklistData: Blocklist | undefined
+  blocklistData: Blocklist | undefined,
+  currency: string,
+  amount: string
 ) => {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -22,17 +24,20 @@ const getBlocklistRoot = (
   useEffect(() => {
     const fetchExclusionTree = async (
       apolloClient: ApolloClient<NormalizedCacheObject>,
-      blocklistedAddresses: string[]
+      blocklistedAddresses: string[],
+      currency: string,
+      amount: string
     ) => {
       setLoading(true);
       const exclusionTree = await getExclusionTree(
         apolloClient,
-        blocklistedAddresses
+        blocklistedAddresses,
+        currency,
+        amount
       );
       setLoading(false);
       return exclusionTree.root;
     };
-
     if (
       !apolloClient ||
       (blocklistData?.blocklist.length ?? 0) <= 0 ||
@@ -40,7 +45,12 @@ const getBlocklistRoot = (
     ) {
       return;
     }
-    fetchExclusionTree(apolloClient, blocklistData!.blocklist).then((root) => {
+    fetchExclusionTree(
+      apolloClient,
+      blocklistData!.blocklist,
+      currency,
+      amount
+    ).then((root) => {
       setExclusionTreeRoot(ethers.utils.hexlify(BigInt(root)));
     });
   }, [exclusionTreeRoot, blocklistData, apolloClient]);

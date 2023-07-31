@@ -11,7 +11,7 @@ import contractAbis from "../contracts/contractAbi.json";
 import { ethers } from "ethers";
 import getCIDFromMultihash from "../hooks/getCIDFromMultihash";
 import CHAIN_GRAPH_URLS from "../config/subgraph";
-import { Button } from "react-bootstrap";
+import { Button, Dropdown } from "react-bootstrap";
 import { ApolloClient, NormalizedCacheObject } from "@apollo/client";
 import getBlocklist from "../hooks/getBlocklist";
 import getBlocklistRoot from "../hooks/getBlocklistRoot";
@@ -72,11 +72,18 @@ const Editor = (props: {
     },
   });
 
+  //TODO the Editor should choose the pool from the dropdown, and the currency and amount will be auto-filled based on the choice
+  //The dropdown should be auto-filled by reading the available Tornado instances from the proxy or instance registry contract
   const {
     exclusionTreeRoot,
     error: blocklistRootLoadingError,
     loading: blocklistRootLoading,
-  } = getBlocklistRoot(props.apolloClient, blocklistData);
+  } = getBlocklistRoot(
+    props.apolloClient,
+    blocklistData,
+    "eth" /*TODO auto-fill from dropdown*/,
+    "0.1" /*TODO auto-fill from dropdown*/
+  );
 
   const { config: addListHashConfig } = usePrepareContractWrite({
     address: `0x${blocklistRegistryAddress?.slice(2)}`,
@@ -181,12 +188,20 @@ const Editor = (props: {
               }}
             />
             <br />
-
             {(isPrepareListWriteError || isListHashError) && (
               <div>
                 Error: {(prepareListWriteError || addListHashError)?.message}
               </div>
             )}
+            <br />
+            <Dropdown>
+              <Dropdown.Toggle variant="success" id="dropdown-basic">
+                Choose Pool
+              </Dropdown.Toggle>
+              <Dropdown.Menu>
+                <Dropdown.Item href="#/action-1">0.1 ETH</Dropdown.Item>
+              </Dropdown.Menu>
+            </Dropdown>
             <br />
             <Button
               type="button"

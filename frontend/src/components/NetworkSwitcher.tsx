@@ -9,7 +9,8 @@ export function NetworkSwitcher() {
   return (
     <div style={{ padding: 5, margin: 5 }}>
       <div>
-        Connected to {chain?.name ?? chain?.id}
+        Connected to{" "}
+        {chain?.name?.replace("Chain 1", "Ethereum Mainnet") ?? chain?.id}
         {chain?.unsupported && " (unsupported)"}
       </div>
 
