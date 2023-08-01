@@ -12,7 +12,7 @@ type Blocklist = {
  * @param cid CID of the blocklist file
  * @returns parsed blocklist JS
  */
-const getBlocklistRoot = (
+const useBlocklistRoot = (
   apolloClient: ApolloClient<NormalizedCacheObject> | undefined,
   blocklistData: Blocklist | undefined,
   currency: string,
@@ -53,8 +53,8 @@ const getBlocklistRoot = (
     ).then((root) => {
       setExclusionTreeRoot(ethers.utils.hexlify(BigInt(root)));
     });
-  }, [exclusionTreeRoot, blocklistData, apolloClient]);
+  }, [exclusionTreeRoot, blocklistData, apolloClient, amount, currency]);
   return { exclusionTreeRoot, error, loading };
 };
 
-export default getBlocklistRoot;
+export default useBlocklistRoot;

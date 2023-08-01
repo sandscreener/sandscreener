@@ -28,11 +28,18 @@ import { ApolloQueryResult, gql } from "@apollo/client";
 import CHAIN_GRAPH_URLS from "../config/subgraph";
 import useApolloClient from "../hooks/useApolloClient";
 import Button from "react-bootstrap/Button";
-import { Accordion, Form } from "react-bootstrap";
+import {
+  Accordion,
+  Dropdown,
+  Form,
+  OverlayTrigger,
+  Tooltip,
+} from "react-bootstrap";
 import useFeathersClient from "../hooks/useFeathersClient";
 import useTornadoPoolContract from "../hooks/useTornadoPool";
 import getExclusionTree from "../utils/getExclusionTree";
-import useProofsOfInnocense from "../hooks/useProofsOfInnocense";
+import useProofsOfInnocence from "../hooks/useProofsOfInnocence";
+import useSubmittedBlocklists from "../hooks/useSubmittedBlocklists";
 const groth16 = require("snarkjs").groth16;
 
 const CIRCUIT_WASM_PATH = "./zk/withdraw.wasm";
@@ -42,17 +49,28 @@ type Deployment = {
   address: string;
 };
 
-export type Deployments = {
+type Deployments = {
   [network: string]: Deployment;
 };
 
-export type ABIs = {
+type ABIs = {
   [network: string]: string;
+};
+
+type Blocklist = {
+  exclusionTreeRoot: string;
+  editorAddress: string;
+  blocklistHash: string;
+  txHash: string;
+  blockNumber: number;
 };
 
 function Page() {
   const PRODUCTION = process.env.NODE_ENV === "production";
 
+  const [selectedBlocklist, setSelectedBlocklist] = useState<
+    Blocklist | undefined
+  >();
   const [proofInput, setProofInput] = useState<any | undefined>();
   const [isUsingGraph, setIsUsingGraph] = useState(true);
   const { address: connectedUserAddress, isConnected } = useAccount();
@@ -276,18 +294,24 @@ function Page() {
     fetchEvents();
   }, [commitmentHex, tornadoPoolContract, isCommitmentValid]);
 
-  const connectedUserProofs = useProofsOfInnocense(
+  const connectedUserProofs = useProofsOfInnocence(
     blocklistRegistryAddress,
     contractAbi,
     provider,
     connectedUserAddress
   );
 
-  const otherUserProofs = useProofsOfInnocense(
+  const otherUserProofs = useProofsOfInnocence(
     blocklistRegistryAddress,
     contractAbi,
     provider,
     proofQueryAddress
+  );
+
+  const submittedBlocklists = useSubmittedBlocklists(
+    blocklistRegistryAddress,
+    contractAbi,
+    provider
   );
 
   const {
@@ -503,6 +527,7 @@ function Page() {
       const c = [argv[6], argv[7]];
       const inputs = argv.slice(8);
       setProofInput({ a, b, c, publicInputs: inputs });
+      resetProofVerification();
     } else if (feathersClient) {
       let result = await feathersClient
         .service("submit-proof")
@@ -549,6 +574,10 @@ function Page() {
     onError(err) {
       alert("Error submitting proof");
       console.log("proofVerificationError", err);
+      setProofStatus("error");
+    },
+    onSettled(_data, _error) {
+      setProofInput(undefined);
     },
   });
 
@@ -556,15 +585,14 @@ function Page() {
     data: proofVerificationData,
     write: verifyProof,
     reset: resetProofVerification,
+    isLoading: isVerifyingProof,
   } = useContractWrite(verifyProofConfig);
 
   useEffect(() => {
-    if (verifyProof) {
+    if (verifyProof && !isVerifyingProof) {
       verifyProof();
-      setProofInput(undefined);
-      resetProofVerification();
     }
-  }, [verifyProof]);
+  }, [verifyProof, isVerifyingProof]);
 
   const {
     isLoading: isProofVerificationLoading,
@@ -572,16 +600,30 @@ function Page() {
     isError: isProofVerificationError,
   } = useWaitForTransaction({
     hash: proofVerificationData?.hash,
-    onSuccess(data) {
+    onSuccess(_data) {
       setProofStatus("success");
+      alert("The proof has been successfully submitted.");
     },
-    onError(err) {
+    onError(_err) {
+      console.log("onerror");
       setProofStatus("error");
     },
-    onSettled(data, error) {
+    onSettled(_data, _error) {
+      console.log("onsettled");
       setProofStatus("idle");
+      setProofInput(undefined);
     },
   });
+
+  const isProofSubmittionDisabled =
+    proofStatus === "pending" ||
+    !listAuthorAddress ||
+    listAuthorAddressError ||
+    !commitmentHex ||
+    !isCommitmentValid ||
+    !feathersClient ||
+    !poolName ||
+    !chainId;
 
   /* UI */
   return (
@@ -612,23 +654,42 @@ function Page() {
           {!chain?.unsupported && (
             <>
               <div style={{ padding: 5, margin: 5 }}>
-                Explore Blocklists
-                <form>
-                  <label htmlFor="listAuthor">List Author Address:</label>
-                  <input
-                    style={{ padding: 5, margin: 5 }}
-                    type="text"
-                    id="listAuthor"
-                    value={listAuthorAddress}
-                    onChange={(e) => {
-                      const addr = `0x${e.target.value.slice(2)}`;
+                Prove Your Innocence
+                {submittedBlocklists.length > 0 && (
+                  <Dropdown
+                    onSelect={(eventKey: any, _event: Object) => {
+                      const blocklist = submittedBlocklists.find((b) => {
+                        return b.txHash === eventKey;
+                      });
+                      const addr = blocklist?.editorAddress ?? "";
+                      setSelectedBlocklist(blocklist);
                       setListAuthorAddress(addr);
                     }}
-                  />
-                  <br />
-                </form>
+                  >
+                    <Dropdown.Toggle variant="success" id="dropdown-basic">
+                      {selectedBlocklist
+                        ? `Submitted by ${
+                            selectedBlocklist.editorAddress.slice(0, 5) +
+                            "..." +
+                            selectedBlocklist.editorAddress.slice(
+                              selectedBlocklist.editorAddress.length - 4
+                            )
+                          } at
+                          block #${selectedBlocklist.blockNumber}`
+                        : "Select Blocklist"}
+                    </Dropdown.Toggle>
+                    {submittedBlocklists.map((submittedBlocklist) => (
+                      <Dropdown.Menu key={submittedBlocklist.txHash}>
+                        <Dropdown.Item eventKey={submittedBlocklist.txHash}>
+                          Submitted by {submittedBlocklist.editorAddress} at
+                          block #{submittedBlocklist.blockNumber}
+                        </Dropdown.Item>
+                      </Dropdown.Menu>
+                    ))}
+                  </Dropdown>
+                )}
                 {listAuthorAddress && latestBlocklistHashForAddress && (
-                  <p>Latest hash: {latestBlocklistHashForAddress}</p>
+                  <p>IPFS hash: {latestBlocklistHashForAddress}</p>
                 )}
                 {isBlocklistLoading && <p>Loading blocklist...</p>}
                 {blocklistLoadingError && (
@@ -651,9 +712,7 @@ function Page() {
                   </div>
                 )}
               </div>
-              <hr />
               <div style={{ padding: 5, margin: 5 }}>
-                Prove Your Innocense
                 <form>
                   <Form.Switch
                     type="switch"
@@ -675,25 +734,32 @@ function Page() {
                     }}
                   />
                   <br />
-                  <Button
-                    style={{ paddingTop: 5, marginTop: 5 }}
-                    type="button"
-                    disabled={
-                      proofStatus === "pending" ||
-                      !listAuthorAddress ||
-                      listAuthorAddressError ||
-                      !commitmentHex ||
-                      !isCommitmentValid ||
-                      !feathersClient ||
-                      !poolName ||
-                      !chainId
+                  <OverlayTrigger
+                    overlay={
+                      <Tooltip id={"proof-btn-tooltip"}>
+                        {isProofSubmittionDisabled
+                          ? !listAuthorAddress
+                            ? "Please select blocklist"
+                            : !commitmentHex
+                            ? "Please input your secret note"
+                            : ""
+                          : "Submit the proof"}
+                      </Tooltip>
                     }
-                    onClick={generateProof}
                   >
-                    {proofStatus === "pending"
-                      ? "Generating proof..."
-                      : "Generate proof"}
-                  </Button>
+                    <span className="d-inline-block">
+                      <Button
+                        style={{ paddingTop: 5, marginTop: 5 }}
+                        type="button"
+                        disabled={isProofSubmittionDisabled}
+                        onClick={generateProof}
+                      >
+                        {proofStatus === "pending"
+                          ? "Generating proof..."
+                          : "Generate proof"}
+                      </Button>
+                    </span>
+                  </OverlayTrigger>
                   <br />
                   {proofStatus === "success" && "Proof submitted!"}
                   {proofStatus === "pending" && <progress value={undefined} />}
@@ -718,7 +784,7 @@ function Page() {
                 )}
                 <div>
                   <hr />
-                  {"Check User's Innocense"}
+                  {"Check User's Innocence"}
                   <form>
                     <label htmlFor="proofQueryAddress">User Address:</label>
                     <input

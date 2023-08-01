@@ -14,7 +14,7 @@ import CHAIN_GRAPH_URLS from "../config/subgraph";
 import { Button, Dropdown } from "react-bootstrap";
 import { ApolloClient, NormalizedCacheObject } from "@apollo/client";
 import useBlocklist from "../hooks/useBlocklist";
-import useBlocklistRoot from "../utils/getBlocklistRoot";
+import useBlocklistRoot from "../hooks/useBlocklistRoot";
 
 const Editor = (props: {
   chainId: keyof typeof CHAIN_GRAPH_URLS | undefined;
