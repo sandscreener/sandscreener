@@ -9,29 +9,30 @@ import {
   useProvider,
   useWaitForTransaction,
 } from "wagmi";
+
 import { buildMimcSponge } from "circomlibjs";
 import { Account, Connect, NetworkSwitcher } from "../components";
 import React, { useEffect, useState } from "react";
 import { ethers } from "ethers";
 import contractDeployments from "../contracts/deployments.json";
 import contractAbis from "../contracts/contractAbi.json";
-import getBlocklist from "../hooks/getBlocklist";
+import useBlocklist from "../hooks/useBlocklist";
 import tornadoPoolABI from "../contracts/tornado/TornadoCash_Eth_01.json";
 import { parseNote } from "../utils/crypto.js";
 import Auditor from "../components/Auditor";
 import Editor from "../components/Editor";
-import getCIDFromMultihash from "../hooks/getCIDFromMultihash";
+import getCIDFromMultihash from "../utils/getCIDFromMultihash";
 import { isAddressValid } from "../utils/addressValidation";
 import MerkleTree from "fixed-merkle-tree";
 import { ApolloQueryResult, gql } from "@apollo/client";
 import CHAIN_GRAPH_URLS from "../config/subgraph";
-import getApolloClient from "../hooks/getApolloClient";
+import useApolloClient from "../hooks/useApolloClient";
 import Button from "react-bootstrap/Button";
 import { Accordion, Form } from "react-bootstrap";
-import getFeathersClient from "../hooks/getFeathersClient";
-import getTornadoPoolContract from "../hooks/getTornadoPool";
+import useFeathersClient from "../hooks/useFeathersClient";
+import useTornadoPoolContract from "../hooks/useTornadoPool";
 import getExclusionTree from "../utils/getExclusionTree";
-import getProofsOfInnocence from "../hooks/getProofsOfInnocence";
+import useProofsOfInnocense from "../hooks/useProofsOfInnocense";
 const groth16 = require("snarkjs").groth16;
 
 const CIRCUIT_WASM_PATH = "./zk/withdraw.wasm";
@@ -77,7 +78,7 @@ function Page() {
   const provider = useProvider({
     chainId: chainId,
   });
-  const tornadoPoolContract = getTornadoPoolContract(
+  const tornadoPoolContract = useTornadoPoolContract(
     poolAddress,
     tornadoPoolABI,
     provider
@@ -90,7 +91,7 @@ function Page() {
   const [isCommitmentValid, setCommitmentValid] = useState(false);
   const [contractAbi, setContractAbi] = useState<{}[] | undefined>();
 
-  const apolloClient = getApolloClient(chainId).apolloClient;
+  const apolloClient = useApolloClient(chainId).apolloClient;
 
   const { chain, chains } = useNetwork();
 
@@ -114,7 +115,7 @@ function Page() {
         )}`
       );
     }
-  }, [chain]);
+  }, [chain, chains]);
 
   useEffect(() => {
     if (!chainId) return;
@@ -275,14 +276,14 @@ function Page() {
     fetchEvents();
   }, [commitmentHex, tornadoPoolContract, isCommitmentValid]);
 
-  const connectedUserProofs = getProofsOfInnocence(
+  const connectedUserProofs = useProofsOfInnocense(
     blocklistRegistryAddress,
     contractAbi,
     provider,
     connectedUserAddress
   );
 
-  const otherUserProofs = getProofsOfInnocence(
+  const otherUserProofs = useProofsOfInnocense(
     blocklistRegistryAddress,
     contractAbi,
     provider,
@@ -293,7 +294,7 @@ function Page() {
     data: blocklistData,
     error: blocklistLoadingError,
     loading: isBlocklistLoading,
-  } = getBlocklist(latestBlocklistHashForAddress);
+  } = useBlocklist(latestBlocklistHashForAddress);
 
   const poolDepositsQuery = gql`
     query Deposits(
@@ -314,7 +315,7 @@ function Page() {
     }
   `;
 
-  const feathersClient = getFeathersClient(PRODUCTION);
+  const feathersClient = useFeathersClient(PRODUCTION);
 
   async function getTrees(blocklistedAddresses: string[]) {
     let depositTree: MerkleTree;
@@ -652,7 +653,7 @@ function Page() {
               </div>
               <hr />
               <div style={{ padding: 5, margin: 5 }}>
-                Prove Your Innocence
+                Prove Your Innocense
                 <form>
                   <Form.Switch
                     type="switch"
@@ -717,7 +718,7 @@ function Page() {
                 )}
                 <div>
                   <hr />
-                  Check User's Innocence
+                  {"Check User's Innocense"}
                   <form>
                     <label htmlFor="proofQueryAddress">User Address:</label>
                     <input

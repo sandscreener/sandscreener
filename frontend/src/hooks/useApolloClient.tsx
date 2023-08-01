@@ -11,7 +11,7 @@ import CHAIN_GRAPH_URLS from "../config/subgraph";
  * @param chainId Chain ID
  * @returns Apollo client
  */
-const getApolloClient = (chainId: number | undefined) => {
+const useApolloClient = (chainId: number | undefined) => {
   const [apolloClient, setApolloClient] =
     useState<ApolloClient<NormalizedCacheObject>>();
 
@@ -29,4 +29,4 @@ const getApolloClient = (chainId: number | undefined) => {
   return { apolloClient: apolloClient };
 };
 
-export default getApolloClient;
+export default useApolloClient;

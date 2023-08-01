@@ -7,7 +7,7 @@ import { ethers } from "ethers";
  * @param tornadoPoolABI - The ABI of the Tornado Pool contract
  * @param provider - The Web3 provider
  */
-const getTornadoPoolContract = (
+const useTornadoPoolContract = (
   poolAddress: string | undefined,
   tornadoPoolABI: ethers.ContractInterface | undefined,
   provider: ethers.providers.Provider | undefined
@@ -29,4 +29,4 @@ const getTornadoPoolContract = (
   return tornadoPoolContract;
 };
 
-export default getTornadoPoolContract;
+export default useTornadoPoolContract;

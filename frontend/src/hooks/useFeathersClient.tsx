@@ -8,7 +8,7 @@ import createApplication from "@feathersjs/feathers";
  * @param production whether the environment is production or not
  * @returns Feathers client
  */
-const getFeathersClient = (
+const useFeathersClient = (
   production: boolean
 ): createApplication.Application<any> | undefined => {
   const [feathersClient, setFeathersClient] =
@@ -23,9 +23,9 @@ const getFeathersClient = (
     );
     feathersClient.configure(restClient.axios(axios));
     setFeathersClient(feathersClient);
-  }, []);
+  }, [production]);
 
   return feathersClient;
 };
 
-export default getFeathersClient;
+export default useFeathersClient;

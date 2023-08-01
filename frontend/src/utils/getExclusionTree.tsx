@@ -59,7 +59,6 @@ async function getBlocklistedCommitments(
   var i = 0;
   var returnedCount = 0;
   var commitments: string[] = [];
-  //TODO amount and currency from note
   do {
     await apolloClient
       .query({
@@ -76,7 +75,7 @@ async function getBlocklistedCommitments(
         returnedCount = result.data.deposits.length;
         commitments.push(
           ...result.data.deposits.map(
-            (d: { commitment: string }) => d.commitment
+            (deposit: { commitment: string }) => deposit.commitment
           )
         );
         console.log(
